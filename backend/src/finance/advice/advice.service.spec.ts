@@ -1,31 +1,59 @@
+import type { FinanceAdviceRepository } from './advice.repository';
 import { createFinanceAdviceService } from './advice.service';
 
-function createPrismaMock() {
+function createDeps() {
+  const repository: jest.Mocked<FinanceAdviceRepository> = {
+    listBudgetsWithCategory: jest.fn(),
+    listRecentExpenses: jest.fn(),
+    createInteractionLog: jest.fn(),
+  };
+
   return {
-    financeBudget: { findMany: jest.fn() },
-    financeExpense: { findMany: jest.fn() },
-    financeAIInteraction: { create: jest.fn() },
+    repository,
+    financeAiClient: {
+      extractExpenseText: jest.fn(),
+      extractInvoiceImage: jest.fn(),
+      generateAdvice: jest.fn(),
+      chatRespond: jest.fn(),
+    },
   };
 }
 
 describe('createFinanceAdviceService', () => {
-  it('generates advice from budgets and expenses and stores the interaction', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeBudget.findMany.mockResolvedValue([{ id: 'budget1' }]);
-    prisma.financeExpense.findMany.mockResolvedValue([{ id: 'expense1' }]);
-    const financeAiClient = { generateAdvice: jest.fn().mockResolvedValue({ advice: 'Tiết kiệm hơn', highlights: ['Ăn uống tăng'], warnings: [] }) };
-    const service = createFinanceAdviceService({ prisma, financeAiClient } as any);
+  it('generates advice from the user context and logs the interaction', async () => {
+    const deps = createDeps();
+    deps.repository.listBudgetsWithCategory.mockResolvedValue([]);
+    deps.repository.listRecentExpenses.mockResolvedValue([]);
+    const aiResponse = { advice: 'Giảm ăn ngoài', highlights: [], warnings: [] };
+    deps.financeAiClient.generateAdvice.mockResolvedValue(aiResponse);
+    const service = createFinanceAdviceService(deps);
 
-    await expect(service.generate('user1', 'monthly')).resolves.toEqual({ advice: 'Tiết kiệm hơn', highlights: ['Ăn uống tăng'], warnings: [] });
+    const result = await service.generate('user1', 'monthly');
 
-    expect(financeAiClient.generateAdvice).toHaveBeenCalledWith({
+    expect(deps.repository.listRecentExpenses).toHaveBeenCalledWith('user1', 200);
+    expect(deps.financeAiClient.generateAdvice).toHaveBeenCalledWith({
       period: 'monthly',
-      budgets: [{ id: 'budget1' }],
-      expenses: [{ id: 'expense1' }],
+      budgets: [],
+      expenses: [],
       locale: 'vi-VN',
     });
-    expect(prisma.financeAIInteraction.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ userId: 'user1', interactionType: 'financial_advice' }),
+    expect(deps.repository.createInteractionLog).toHaveBeenCalledWith({
+      userId: 'user1',
+      interactionType: 'financial_advice',
+      inputData: { period: 'monthly', budgets: [], expenses: [] },
+      aiResponse,
     });
+    expect(result).toBe(aiResponse);
+  });
+
+  it('propagates AI failures without logging an interaction', async () => {
+    const deps = createDeps();
+    deps.repository.listBudgetsWithCategory.mockResolvedValue([]);
+    deps.repository.listRecentExpenses.mockResolvedValue([]);
+    deps.financeAiClient.generateAdvice.mockRejectedValue(new Error('ai down'));
+    const service = createFinanceAdviceService(deps);
+
+    await expect(service.generate('user1', 'weekly')).rejects.toThrow('ai down');
+    expect(deps.repository.createInteractionLog).not.toHaveBeenCalled();
   });
 });
