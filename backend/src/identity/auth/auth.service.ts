@@ -1,6 +1,7 @@
-import { Prisma } from '@prisma/client';
 import type { BackendDeps } from '../../dependencies';
 import { conflict, forbidden, unauthorized } from '../../errors';
+import type { User } from '../users/users.model';
+import { EmailAlreadyInUseError } from '../users/users.repository';
 import type { AuthResponse, AuthUser, LoginInput, RegisterInput, RegisterResponse } from './auth.schema';
 
 export type AuthService = {
@@ -8,7 +9,9 @@ export type AuthService = {
   login(input: LoginInput): Promise<AuthResponse>;
 };
 
-function toAuthUser(user: AuthUser): AuthUser {
+type AuthServiceDeps = Pick<BackendDeps, 'usersRepository' | 'passwordHasher' | 'tokenService'>;
+
+function toAuthUser(user: User): AuthUser {
   return {
     id: user.id,
     email: user.email,
@@ -18,24 +21,10 @@ function toAuthUser(user: AuthUser): AuthUser {
   };
 }
 
-function createAuthResponse(
-  deps: Pick<BackendDeps, 'tokenService'>,
-  user: AuthUser,
-): AuthResponse {
-  const authUser = toAuthUser(user);
-
-  return {
-    user: authUser,
-    accessToken: deps.tokenService.signAccessToken(authUser),
-  };
-}
-
-export function createAuthService(
-  deps: Pick<BackendDeps, 'prisma' | 'passwordHasher' | 'tokenService'>,
-): AuthService {
+export function createAuthService(deps: AuthServiceDeps): AuthService {
   return {
     async register(input) {
-      const existing = await deps.prisma.user.findUnique({ where: { email: input.email } });
+      const existing = await deps.usersRepository.findByEmail(input.email);
       if (existing) {
         throw conflict('Email already exists');
       }
@@ -43,14 +32,12 @@ export function createAuthService(
       const passwordHash = await deps.passwordHasher.hash(input.password);
 
       try {
-        const user = await deps.prisma.user.create({
-          data: {
-            email: input.email,
-            passwordHash,
-            name: input.name,
-            role: 'USER',
-            status: 'PENDING',
-          },
+        const user = await deps.usersRepository.create({
+          email: input.email,
+          passwordHash,
+          name: input.name,
+          role: 'USER',
+          status: 'PENDING',
         });
 
         return {
@@ -58,7 +45,7 @@ export function createAuthService(
           message: 'Registration pending approval',
         };
       } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        if (error instanceof EmailAlreadyInUseError) {
           throw conflict('Email already exists');
         }
         throw error;
@@ -66,7 +53,7 @@ export function createAuthService(
     },
 
     async login(input) {
-      const user = await deps.prisma.user.findUnique({ where: { email: input.email } });
+      const user = await deps.usersRepository.findByEmail(input.email);
       if (!user) {
         throw unauthorized('Invalid credentials');
       }
@@ -84,7 +71,12 @@ export function createAuthService(
         throw forbidden('Account rejected');
       }
 
-      return createAuthResponse(deps, user);
+      const authUser = toAuthUser(user);
+
+      return {
+        user: authUser,
+        accessToken: deps.tokenService.signAccessToken(authUser),
+      };
     },
   };
 }
