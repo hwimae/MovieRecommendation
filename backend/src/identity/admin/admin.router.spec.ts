@@ -23,6 +23,13 @@ function createDepsMock(user: unknown): BackendDeps {
       },
     } as any,
     passwordHasher: { hash: jest.fn(), compare: jest.fn() },
+    usersRepository: {
+      findById: jest.fn(),
+      findByEmail: jest.fn(),
+      create: jest.fn(),
+      listByStatus: jest.fn(),
+      updateStatus: jest.fn(),
+    },
     tokenService: { signAccessToken: jest.fn(), verifyAccessToken: jest.fn().mockReturnValue({ sub: 'admin1', email: 'admin@example.com' }) },
     aiClient: {} as BackendDeps['aiClient'],
     financeAiClient: {} as BackendDeps['financeAiClient'],

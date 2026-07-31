@@ -7,6 +7,8 @@ import { createAiClient, type AiClient } from './books/recommendations/ai-client
 import { prisma } from './prisma';
 import { createR2StoryContentReader, getR2StoryContentConfig } from './storage/story-content-r2';
 import { createStoryContentReader, type StoryContentReader } from './storage/story-content-storage';
+import { createPrismaUsersRepository } from './identity/users/users.prisma.repository';
+import type { UsersRepository } from './identity/users/users.repository';
 
 export type AccessTokenPayload = {
   sub: string;
@@ -29,6 +31,7 @@ export type Logger = {
 
 export type BackendDeps = {
   prisma: PrismaClient;
+  usersRepository: UsersRepository;
   passwordHasher: PasswordHasher;
   tokenService: TokenService;
   aiClient: AiClient;
@@ -43,6 +46,7 @@ export function createBackendDeps(config: AppConfig): BackendDeps {
 
   return {
     prisma,
+    usersRepository: createPrismaUsersRepository(prisma),
     passwordHasher: {
       hash: (password) => bcrypt.hash(password, 10),
       compare: (password, passwordHash) => bcrypt.compare(password, passwordHash),

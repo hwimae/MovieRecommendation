@@ -18,6 +18,13 @@ function createDepsMock(): BackendDeps {
   return {
     prisma: {} as BackendDeps['prisma'],
     passwordHasher: { hash: jest.fn(), compare: jest.fn() },
+    usersRepository: {
+      findById: jest.fn(),
+      findByEmail: jest.fn(),
+      create: jest.fn(),
+      listByStatus: jest.fn(),
+      updateStatus: jest.fn(),
+    },
     tokenService: { signAccessToken: jest.fn(), verifyAccessToken: jest.fn() },
     aiClient: {} as BackendDeps['aiClient'],
     financeAiClient: {} as BackendDeps['financeAiClient'],
