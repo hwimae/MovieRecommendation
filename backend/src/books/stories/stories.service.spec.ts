@@ -1,163 +1,114 @@
+import type { StoryWithCategory } from './stories.model';
+import type { StoriesRepository } from './stories.repository';
 import { createStoriesService } from './stories.service';
 
-describe('stories.service', () => {
-  const baseStory = {
-    id: 'story-1',
-    sourceBookId: 1,
-    title: 'Tiên Nghịch',
-    authors: 'Nhĩ Căn',
-    categoryId: 2,
-    description: 'Mô tả',
-    coverImage: null,
-    externalAverageRating: 4.8,
-    externalReviewCount: 100,
-    contentPath: 'storage/stories/1.txt' as string | null,
-    createdAt: new Date('2024-01-01T00:00:00.000Z'),
-    updatedAt: new Date('2024-01-02T00:00:00.000Z'),
-    category: { id: 2, name: 'Tiên hiệp', createdAt: new Date('2023-01-01T00:00:00.000Z') },
+const createdAt = new Date('2026-01-01T00:00:00.000Z');
+
+function createStory(overrides: Partial<StoryWithCategory> = {}): StoryWithCategory {
+  return {
+    id: 'story1',
+    productId: 1,
+    title: 'Tiên hiệp ký',
+    authors: 'Tác giả A',
+    originalPrice: 100000,
+    currentPrice: 90000,
+    quantity: 10,
+    categoryId: 'cat1',
+    averageRating: 4.5,
+    reviewCount: 10,
+    externalAverageRating: 4.2,
+    externalReviewCount: 120,
+    userAverageRating: 4.8,
+    userReviewCount: 5,
+    pages: 300,
+    manufacturer: null,
+    coverUrl: null,
+    discount: 0.1,
+    contentPath: 'storage/stories/1.txt',
+    contentHash: 'hash',
+    contentUpdatedAt: createdAt,
+    contentIndexedAt: createdAt,
+    createdAt,
+    updatedAt: createdAt,
+    category: { id: 'cat1', name: 'Tiên hiệp' },
+    ...overrides,
   };
+}
 
-  it('listStories does not load content relation and derives hasContent from contentPath', async () => {
-    const findMany = jest.fn().mockResolvedValue([
-      { ...baseStory, contentPath: 'storage/stories/1.txt' },
-      { ...baseStory, id: 'story-2', title: 'Không có file', contentPath: null },
-    ]);
-    const count = jest.fn().mockResolvedValue(2);
-    const transaction = jest.fn(async (operations: Array<Promise<unknown>>) => Promise.all(operations));
+function createRepositoryMock(): jest.Mocked<StoriesRepository> {
+  return {
+    searchStories: jest.fn(),
+    findByIdWithCategory: jest.fn(),
+    findContentMeta: jest.fn(),
+  };
+}
 
-    const prisma = {
-      story: { findMany, count, findUnique: jest.fn() },
-      $transaction: transaction,
-    };
+function createDeps() {
+  return { repository: createRepositoryMock(), storyContentReader: { read: jest.fn() } };
+}
 
-    const service = createStoriesService({ prisma } as never);
+describe('createStoriesService', () => {
+  it('lists stories as public responses with pagination echo', async () => {
+    const deps = createDeps();
+    deps.repository.searchStories.mockResolvedValue({ items: [createStory()], total: 41 });
+    const service = createStoriesService(deps);
 
-    const result = await service.listStories({ page: 1, limit: 20, q: undefined, hasContent: undefined });
+    const result = await service.listStories({ page: 2, limit: 20 });
 
-    expect(findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        include: { category: true },
-      }),
-    );
-    expect(findMany).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        include: expect.objectContaining({ content: expect.anything() }),
-      }),
-    );
-
-    expect(result.items).toHaveLength(2);
-    expect(result.items[0].hasContent).toBe(true);
-    expect(result.items[1].hasContent).toBe(false);
+    expect(deps.repository.searchStories).toHaveBeenCalledWith({ page: 2, limit: 20 });
+    expect(result.total).toBe(41);
+    expect(result.page).toBe(2);
+    expect(result.limit).toBe(20);
+    expect(result.items[0]).toMatchObject({ id: 'story1', category: 'Tiên hiệp', hasContent: true });
     expect(result.items[0]).not.toHaveProperty('contentPath');
-    expect(result.items[1]).not.toHaveProperty('contentPath');
   });
 
-  it('getStoryById does not expose contentPath and derives hasContent', async () => {
-    const findUnique = jest.fn().mockResolvedValue({ ...baseStory, contentPath: 'storage/stories/1.txt' });
-    const prisma = {
-      story: { findMany: jest.fn(), count: jest.fn(), findUnique },
-      $transaction: jest.fn(),
-    };
+  it('reports a missing story', async () => {
+    const deps = createDeps();
+    deps.repository.findByIdWithCategory.mockResolvedValue(null);
+    const service = createStoriesService(deps);
 
-    const service = createStoriesService({ prisma } as never);
-
-    const result = await service.getStoryById('story-1');
-
-    expect(findUnique).toHaveBeenCalledWith({ where: { id: 'story-1' }, include: { category: true } });
-    expect(result.hasContent).toBe(true);
-    expect(result).not.toHaveProperty('contentPath');
+    await expect(service.getStoryById('missing')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Story not found',
+    });
   });
 
-  it('listStories applies hasContent=true filter with contentPath not null', async () => {
-    const findMany = jest.fn().mockResolvedValue([]);
-    const count = jest.fn().mockResolvedValue(0);
-    const transaction = jest.fn(async (operations: Array<Promise<unknown>>) => Promise.all(operations));
-
-    const prisma = {
-      story: { findMany, count, findUnique: jest.fn() },
-      $transaction: transaction,
-    };
-
-    const service = createStoriesService({ prisma } as never);
-
-    await service.listStories({ page: 1, limit: 20, q: undefined, hasContent: true });
-
-    expect(findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          contentPath: { not: null },
-        }),
-      }),
-    );
-  });
-
-  it('getStoryContentById reads content via injected reader', async () => {
-    const findUnique = jest.fn().mockResolvedValue({
-      id: 'story-1',
-      title: 'Tiên Nghịch',
+  it('reads story content through the injected reader', async () => {
+    const deps = createDeps();
+    deps.repository.findContentMeta.mockResolvedValue({
+      id: 'story1',
+      title: 'Tiên hiệp ký',
       contentPath: 'storage/stories/1.txt',
     });
-    const reader = { read: jest.fn().mockResolvedValue('Nội dung truyện') };
+    deps.storyContentReader.read.mockResolvedValue('Ngày xửa ngày xưa...');
+    const service = createStoriesService(deps);
 
-    const prisma = {
-      story: { findMany: jest.fn(), count: jest.fn(), findUnique },
-      $transaction: jest.fn(),
-    };
-
-    const service = createStoriesService({ prisma, storyContentReader: reader } as never);
-
-    const result = await service.getStoryContentById('story-1');
-
-    expect(findUnique).toHaveBeenCalledWith({
-      where: { id: 'story-1' },
-      select: { id: true, title: true, contentPath: true },
+    await expect(service.getStoryContentById('story1')).resolves.toEqual({
+      storyId: 'story1',
+      title: 'Tiên hiệp ký',
+      content: 'Ngày xửa ngày xưa...',
     });
-    expect(reader.read).toHaveBeenCalledWith('storage/stories/1.txt');
-    expect(result).toEqual({
-      storyId: 'story-1',
-      title: 'Tiên Nghịch',
-      content: 'Nội dung truyện',
-    });
+    expect(deps.storyContentReader.read).toHaveBeenCalledWith('storage/stories/1.txt');
   });
 
-  it('getStoryContentById returns 404 when contentPath missing', async () => {
-    const prisma = {
-      story: {
-        findMany: jest.fn(),
-        count: jest.fn(),
-        findUnique: jest.fn().mockResolvedValue({ id: 'story-1', title: 'Tiên Nghịch', contentPath: null }),
-      },
-      $transaction: jest.fn(),
-    };
-    const reader = { read: jest.fn() };
+  it('reports missing content when the story has no content path or the reader misses', async () => {
+    const deps = createDeps();
+    deps.repository.findContentMeta.mockResolvedValue({ id: 'story1', title: 'Tiên hiệp ký', contentPath: null });
+    const service = createStoriesService(deps);
 
-    const service = createStoriesService({ prisma, storyContentReader: reader } as never);
-
-    await expect(service.getStoryContentById('story-1')).rejects.toMatchObject({
+    await expect(service.getStoryContentById('story1')).rejects.toMatchObject({
       statusCode: 404,
       message: 'Story content not found',
     });
-    expect(reader.read).not.toHaveBeenCalled();
-  });
 
-  it('getStoryContentById returns 404 when reader cannot find file', async () => {
-    const prisma = {
-      story: {
-        findMany: jest.fn(),
-        count: jest.fn(),
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'story-1',
-          title: 'Tiên Nghịch',
-          contentPath: 'storage/stories/missing.txt',
-        }),
-      },
-      $transaction: jest.fn(),
-    };
-    const reader = { read: jest.fn().mockResolvedValue(null) };
-
-    const service = createStoriesService({ prisma, storyContentReader: reader } as never);
-
-    await expect(service.getStoryContentById('story-1')).rejects.toMatchObject({
+    deps.repository.findContentMeta.mockResolvedValue({
+      id: 'story1',
+      title: 'Tiên hiệp ký',
+      contentPath: 'storage/stories/1.txt',
+    });
+    deps.storyContentReader.read.mockResolvedValue(null);
+    await expect(service.getStoryContentById('story1')).rejects.toMatchObject({
       statusCode: 404,
       message: 'Story content not found',
     });

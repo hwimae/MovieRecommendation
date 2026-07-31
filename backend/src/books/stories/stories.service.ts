@@ -1,32 +1,13 @@
-import { Prisma } from '@prisma/client';
-import type { BackendDeps } from '../../dependencies';
 import { notFound } from '../../errors';
-import { createStoryContentReader, type StoryContentReader } from '../../storage/story-content-storage';
+import type { StoryContentReader } from '../../storage/story-content-storage';
+import type {
+  ListStoriesResponse,
+  StoryContentResponse,
+  StoryResponse,
+  StoryWithCategory,
+} from './stories.model';
+import type { StoriesRepository } from './stories.repository';
 import type { ListStoriesQuery } from './stories.schema';
-
-type StoriesServiceDeps = Pick<BackendDeps, 'prisma'> & {
-  storyContentReader?: StoryContentReader;
-};
-
-type StoryWithCategory = Prisma.StoryGetPayload<{ include: { category: true } }>;
-
-export type StoryResponse = Omit<StoryWithCategory, 'category' | 'contentPath'> & {
-  category: string;
-  hasContent: boolean;
-};
-
-export type ListStoriesResponse = {
-  items: StoryResponse[];
-  total: number;
-  page: number;
-  limit: number;
-};
-
-export type StoryContentResponse = {
-  storyId: string;
-  title: string;
-  content: string;
-};
 
 export type StoriesService = {
   listStories(query: ListStoriesQuery): Promise<ListStoriesResponse>;
@@ -34,40 +15,28 @@ export type StoriesService = {
   getStoryContentById(id: string): Promise<StoryContentResponse>;
 };
 
-export function createStoriesService(deps: StoriesServiceDeps): StoriesService {
-  const storyContentReader: StoryContentReader = deps.storyContentReader ?? createStoryContentReader();
+function toStoryResponse(story: StoryWithCategory): StoryResponse {
+  const { category, contentPath, ...publicStory } = story;
+  return { ...publicStory, category: category.name, hasContent: contentPath !== null };
+}
 
+export function createStoriesService(
+  deps: { repository: StoriesRepository; storyContentReader: StoryContentReader },
+): StoriesService {
   return {
     async listStories(query) {
-      const where: Prisma.StoryWhereInput = {
-        ...(query.q
-          ? {
-              OR: [
-                { title: { contains: query.q, mode: 'insensitive' } },
-                { authors: { contains: query.q, mode: 'insensitive' } },
-                { category: { name: { contains: query.q, mode: 'insensitive' } } },
-              ],
-            }
-          : {}),
-        ...(query.hasContent === true ? { contentPath: { not: null } } : {}),
-      };
-
-      const [items, total] = await deps.prisma.$transaction([
-        deps.prisma.story.findMany({
-          where,
-          include: { category: true },
-          orderBy: [{ externalReviewCount: 'desc' }, { externalAverageRating: 'desc' }, { title: 'asc' }],
-          skip: (query.page - 1) * query.limit,
-          take: query.limit,
-        }),
-        deps.prisma.story.count({ where }),
-      ]);
+      const { items, total } = await deps.repository.searchStories({
+        page: query.page,
+        limit: query.limit,
+        q: query.q,
+        hasContent: query.hasContent,
+      });
 
       return { items: items.map(toStoryResponse), total, page: query.page, limit: query.limit };
     },
 
     async getStoryById(id) {
-      const story = await deps.prisma.story.findUnique({ where: { id }, include: { category: true } });
+      const story = await deps.repository.findByIdWithCategory(id);
 
       if (!story) {
         throw notFound('Story not found');
@@ -77,16 +46,13 @@ export function createStoriesService(deps: StoriesServiceDeps): StoriesService {
     },
 
     async getStoryContentById(id) {
-      const story = await deps.prisma.story.findUnique({
-        where: { id },
-        select: { id: true, title: true, contentPath: true },
-      });
+      const story = await deps.repository.findContentMeta(id);
 
       if (!story || !story.contentPath) {
         throw notFound('Story content not found');
       }
 
-      const content = await storyContentReader.read(story.contentPath);
+      const content = await deps.storyContentReader.read(story.contentPath);
 
       if (content === null) {
         throw notFound('Story content not found');
@@ -99,9 +65,4 @@ export function createStoriesService(deps: StoriesServiceDeps): StoriesService {
       };
     },
   };
-}
-
-function toStoryResponse(story: StoryWithCategory): StoryResponse {
-  const { category, contentPath, ...publicStory } = story;
-  return { ...publicStory, category: category.name, hasContent: contentPath !== null };
 }
