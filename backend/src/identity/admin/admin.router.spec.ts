@@ -27,7 +27,7 @@ function createDepsMock(user: unknown): BackendDeps {
       findById: jest.fn(),
       findByEmail: jest.fn(),
       create: jest.fn(),
-      listByStatus: jest.fn(),
+      listByStatus: jest.fn().mockResolvedValue([]),
       updateStatus: jest.fn(),
     },
     tokenService: { signAccessToken: jest.fn(), verifyAccessToken: jest.fn().mockReturnValue({ sub: 'admin1', email: 'admin@example.com' }) },
