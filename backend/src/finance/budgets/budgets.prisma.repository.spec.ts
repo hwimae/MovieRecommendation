@@ -62,7 +62,7 @@ describe('createPrismaFinanceBudgetsRepository', () => {
     expect(result).toEqual([
       expect.objectContaining({
         id: 'budget1',
-        limitAmount: '1000000',
+        limitAmount: 1_000_000,
         period: 'monthly',
         category: expect.objectContaining({ id: 'cat1', name: 'Ăn uống' }),
       }),

@@ -1,15 +1,15 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { toFinanceCategory } from '../categories/categories.prisma.repository';
 import {
   FINANCE_BUDGET_PERIODS,
   type FinanceBudget,
-  type FinanceBudgetCategory,
   type FinanceBudgetPeriod,
 } from './budgets.model';
 import type { FinanceBudgetsRepository } from './budgets.repository';
 
-const includeBudgetRelations = { category: true } satisfies Prisma.FinanceBudgetInclude;
+export const includeBudgetRelations = { category: true } satisfies Prisma.FinanceBudgetInclude;
 
-type PrismaFinanceBudget = Prisma.FinanceBudgetGetPayload<{ include: typeof includeBudgetRelations }>;
+export type PrismaFinanceBudget = Prisma.FinanceBudgetGetPayload<{ include: typeof includeBudgetRelations }>;
 
 function toFinanceBudgetPeriod(value: string): FinanceBudgetPeriod {
   if (FINANCE_BUDGET_PERIODS.includes(value as FinanceBudgetPeriod)) {
@@ -19,32 +19,17 @@ function toFinanceBudgetPeriod(value: string): FinanceBudgetPeriod {
   throw new Error(`Unsupported finance budget period: ${value}`);
 }
 
-function toFinanceBudgetCategory(category: PrismaFinanceBudget['category']): FinanceBudgetCategory {
-  return {
-    id: category.id,
-    userId: category.userId,
-    name: category.name,
-    description: category.description,
-    icon: category.icon,
-    color: category.color,
-    isSystemCategory: category.isSystemCategory,
-    displayOrder: category.displayOrder,
-    createdAt: category.createdAt,
-    updatedAt: category.updatedAt,
-  };
-}
-
-function toFinanceBudget(budget: PrismaFinanceBudget): FinanceBudget {
+export function toFinanceBudget(budget: PrismaFinanceBudget): FinanceBudget {
   return {
     id: budget.id,
     userId: budget.userId,
     categoryId: budget.categoryId,
-    limitAmount: budget.limitAmount.toString(),
+    limitAmount: budget.limitAmount.toNumber(),
     period: toFinanceBudgetPeriod(budget.period),
     alertThreshold: budget.alertThreshold,
     createdAt: budget.createdAt,
     updatedAt: budget.updatedAt,
-    category: toFinanceBudgetCategory(budget.category),
+    category: toFinanceCategory(budget.category),
   };
 }
 

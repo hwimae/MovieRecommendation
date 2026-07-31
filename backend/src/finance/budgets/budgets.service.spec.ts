@@ -10,7 +10,7 @@ function createBudget(): FinanceBudget {
     id: 'budget1',
     userId: 'user1',
     categoryId: 'cat1',
-    limitAmount: '1000000',
+    limitAmount: 1_000_000,
     period: 'monthly',
     alertThreshold: 0.8,
     createdAt,
