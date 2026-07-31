@@ -11,3 +11,12 @@ export type FinanceInvoice = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type FinanceInvoicePendingExpense = {
+  invoiceId: string;
+  merchantName: string | null;
+  description: string;
+  amount: number;
+  spentAt: string | null;
+  sourceType: 'image';
+};

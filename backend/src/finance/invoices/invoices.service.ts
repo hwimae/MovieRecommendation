@@ -1,21 +1,21 @@
 import { readFile, realpath } from 'fs/promises';
 import path from 'path';
-import type { Prisma } from '@prisma/client';
-import type { BackendDeps } from '../../dependencies';
 import { HttpError, validationError } from '../../errors';
-import type { FinanceInvoiceExtractResponse } from '../ai-client';
-import { FINANCE_INVOICE_UPLOAD_DIR, FINANCE_INVOICE_UPLOAD_ROOT } from './invoices.storage';
+import type { FinanceAiClient, FinanceInvoiceExtractResponse } from '../ai-client';
+import type { FinanceInvoice, FinanceInvoicePendingExpense } from './invoices.model';
+import type { FinanceInvoicesRepository } from './invoices.repository';
+import { FINANCE_INVOICE_UPLOAD_ROOT } from './invoices.storage';
 
 export type FinanceInvoicesService = {
-  list(userId: string): Promise<unknown[]>;
+  list(userId: string): Promise<FinanceInvoice[]>;
   processUpload(
     userId: string,
     file: Express.Multer.File,
-  ): Promise<{ invoice: unknown; pendingExpense: Record<string, unknown> | null }>;
+  ): Promise<{ invoice: FinanceInvoice; pendingExpense: FinanceInvoicePendingExpense | null }>;
 };
 
 export function createFinanceInvoicesService(
-  deps: Pick<BackendDeps, 'prisma' | 'financeAiClient'>,
+  deps: { repository: FinanceInvoicesRepository; financeAiClient: FinanceAiClient },
 ): FinanceInvoicesService {
   function parsePurchasedAt(value?: string | null): Date | undefined {
     if (!value) return undefined;
@@ -23,7 +23,10 @@ export function createFinanceInvoicesService(
     return Number.isNaN(parsed.getTime()) ? undefined : parsed;
   }
 
-  function toPendingExpense(invoiceId: string, result: FinanceInvoiceExtractResponse) {
+  function toPendingExpense(
+    invoiceId: string,
+    result: FinanceInvoiceExtractResponse,
+  ): FinanceInvoicePendingExpense | null {
     if (typeof result.totalAmount !== 'number') {
       return null;
     }
@@ -100,18 +103,14 @@ export function createFinanceInvoicesService(
 
   return {
     async list(userId) {
-      return deps.prisma.financeInvoice.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+      return deps.repository.listByUser(userId);
     },
 
     async processUpload(userId, file) {
       const storedFilePath = await resolveSafeStoredFilePath(file);
-      const invoice = await deps.prisma.financeInvoice.create({
-        data: {
-          userId,
-          filename: file.originalname,
-          filePath: storedFilePath,
-          status: 'pending',
-        },
+      const invoice = await deps.repository.createPending(userId, {
+        filename: file.originalname,
+        filePath: storedFilePath,
       });
 
       const uploadFile = await ensureFileBuffer({ ...file, path: storedFilePath });
@@ -124,10 +123,7 @@ export function createFinanceInvoicesService(
           throw error;
         }
 
-        const failedInvoice = await deps.prisma.financeInvoice.update({
-          where: { id: invoice.id },
-          data: { status: 'failed' },
-        });
+        const failedInvoice = await deps.repository.markFailed(invoice.id);
 
         return {
           invoice: failedInvoice,
@@ -136,15 +132,12 @@ export function createFinanceInvoicesService(
       }
 
       const purchasedAt = parsePurchasedAt(extraction.purchasedAt);
-      const updatedInvoice = await deps.prisma.financeInvoice.update({
-        where: { id: invoice.id },
-        data: {
-          status: typeof extraction.totalAmount === 'number' ? 'processed' : 'pending',
-          storeName: extraction.storeName ?? undefined,
-          purchasedAt,
-          totalAmount: extraction.totalAmount ?? undefined,
-          extractedData: extraction.extractedData as Prisma.InputJsonValue,
-        },
+      const updatedInvoice = await deps.repository.applyExtraction(invoice.id, {
+        status: typeof extraction.totalAmount === 'number' ? 'processed' : 'pending',
+        storeName: extraction.storeName ?? undefined,
+        purchasedAt,
+        totalAmount: extraction.totalAmount ?? undefined,
+        extractedData: extraction.extractedData,
       });
 
       return {
