@@ -1,7 +1,7 @@
 import type { FinanceCategory, FinanceGroupRole, Prisma } from '@prisma/client';
 import type { BackendDeps } from '../../dependencies';
 import { conflict, forbidden, notFound } from '../../errors';
-import { summarizeExpenses } from '../spending/spending.service';
+import { summarizeExpenses } from '../spending/spending.model';
 import type { AddFinanceGroupMemberInput, CreateFinanceGroupInput } from './groups.schema';
 
 const groupInclude = {
