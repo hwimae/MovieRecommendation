@@ -1,98 +1,123 @@
-import { createFinanceCategoriesService } from './categories.service';
+import type { FinanceCategory } from './categories.model';
+import { DuplicateFinanceCategoryError, type FinanceCategoriesRepository } from './categories.repository';
+import { createFinanceCategoriesService, DEFAULT_FINANCE_CATEGORIES } from './categories.service';
 
-const DEFAULT_CATEGORY_COUNT = 10;
-
-function createPrismaMock() {
+function createCategory(overrides: Partial<FinanceCategory> = {}): FinanceCategory {
+  const createdAt = new Date('2026-01-01T00:00:00.000Z');
   return {
-    financeCategory: {
-      findMany: jest.fn(),
-      create: jest.fn(),
-      updateMany: jest.fn(),
-      deleteMany: jest.fn(),
-      findFirst: jest.fn(),
-    },
+    id: 'cat1',
+    userId: 'user1',
+    name: 'Ăn uống',
+    description: null,
+    icon: '🍜',
+    color: '#ef4444',
+    isSystemCategory: false,
+    displayOrder: 0,
+    createdAt,
+    updatedAt: createdAt,
+    ...overrides,
   };
 }
 
+function createRepositoryMock(): jest.Mocked<FinanceCategoriesRepository> {
+  return {
+    listByUser: jest.fn(),
+    findDefaultsByNames: jest.fn(),
+    create: jest.fn(),
+    updateForUser: jest.fn(),
+    deleteForUser: jest.fn(),
+  };
+}
+
+const ALL_DEFAULT_NAMES = DEFAULT_FINANCE_CATEGORIES.map((category) => category.name);
+
 describe('createFinanceCategoriesService', () => {
-  it('lists only categories for the current user ordered for display', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeCategory.findMany
-      .mockResolvedValueOnce([{ name: 'Ăn uống' }, { name: 'Đi lại' }, { name: 'Nhà ở' }, { name: 'Mua sắm cá nhân' }, { name: 'Giải trí & du lịch' }, { name: 'Giáo dục & học tập' }, { name: 'Sức khỏe & thể thao' }, { name: 'Gia đình & quà tặng' }, { name: 'Đầu tư & tiết kiệm' }, { name: 'Khác' }])
-      .mockResolvedValueOnce([{ id: 'cat1', userId: 'user1', name: 'Ăn uống' }]);
-    const service = createFinanceCategoriesService({ prisma } as any);
-
-    await expect(service.list('user1')).resolves.toEqual([{ id: 'cat1', userId: 'user1', name: 'Ăn uống' }]);
-    expect(prisma.financeCategory.findMany).toHaveBeenLastCalledWith({
-      where: { userId: 'user1' },
-      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-    });
-  });
-
-  it('initializes missing default Vietnamese categories', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeCategory.findMany.mockResolvedValue([{ name: 'Ăn uống' }]);
-    prisma.financeCategory.create.mockResolvedValue({});
-    const service = createFinanceCategoriesService({ prisma } as any);
+  it('seeds only the missing default categories with their display order', async () => {
+    const repository = createRepositoryMock();
+    repository.findDefaultsByNames.mockResolvedValue(ALL_DEFAULT_NAMES.slice(1));
+    repository.create.mockResolvedValue(createCategory());
+    const service = createFinanceCategoriesService({ repository });
 
     await service.ensureDefaults('user1');
 
-    expect(prisma.financeCategory.create).toHaveBeenCalledTimes(DEFAULT_CATEGORY_COUNT - 1);
-    expect(prisma.financeCategory.create).not.toHaveBeenCalledWith({
-      data: expect.objectContaining({ userId: 'user1', name: 'Ăn uống', isSystemCategory: true }),
-    });
-    expect(prisma.financeCategory.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ userId: 'user1', name: 'Đi lại', isSystemCategory: true }),
+    expect(repository.create).toHaveBeenCalledTimes(1);
+    expect(repository.create).toHaveBeenCalledWith('user1', {
+      ...DEFAULT_FINANCE_CATEGORIES[0],
+      displayOrder: 0,
+      isSystemCategory: true,
     });
   });
 
-  it('ignores duplicate errors while seeding defaults concurrently', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeCategory.findMany.mockResolvedValue([]);
-    prisma.financeCategory.create.mockRejectedValueOnce({ code: 'P2002' }).mockResolvedValue({});
-    const service = createFinanceCategoriesService({ prisma } as any);
+  it('ignores duplicate errors while seeding defaults', async () => {
+    const repository = createRepositoryMock();
+    repository.findDefaultsByNames.mockResolvedValue([]);
+    repository.create.mockRejectedValue(new DuplicateFinanceCategoryError());
+    const service = createFinanceCategoriesService({ repository });
 
     await expect(service.ensureDefaults('user1')).resolves.toBeUndefined();
-    expect(prisma.financeCategory.create).toHaveBeenCalledTimes(DEFAULT_CATEGORY_COUNT);
+    expect(repository.create).toHaveBeenCalledTimes(DEFAULT_FINANCE_CATEGORIES.length);
   });
 
-  it('seeds defaults before the first create', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeCategory.findMany.mockResolvedValue([]);
-    prisma.financeCategory.create.mockResolvedValue({ id: 'cat1' });
-    const service = createFinanceCategoriesService({ prisma } as any);
+  it('lists categories after seeding defaults', async () => {
+    const repository = createRepositoryMock();
+    repository.findDefaultsByNames.mockResolvedValue(ALL_DEFAULT_NAMES);
+    const categories = [createCategory()];
+    repository.listByUser.mockResolvedValue(categories);
+    const service = createFinanceCategoriesService({ repository });
 
-    await service.create('user1', { name: 'Lương', displayOrder: 99 });
-
-    expect(prisma.financeCategory.create).toHaveBeenCalledTimes(DEFAULT_CATEGORY_COUNT + 1);
-    expect(prisma.financeCategory.create).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        data: expect.objectContaining({ userId: 'user1', name: 'Ăn uống', isSystemCategory: true }),
-      }),
-    );
-    expect(prisma.financeCategory.create).toHaveBeenNthCalledWith(
-      DEFAULT_CATEGORY_COUNT + 1,
-      expect.objectContaining({
-        data: expect.objectContaining({ userId: 'user1', name: 'Lương', isSystemCategory: false }),
-      }),
-    );
+    await expect(service.list('user1')).resolves.toEqual(categories);
+    expect(repository.findDefaultsByNames).toHaveBeenCalledWith('user1', ALL_DEFAULT_NAMES);
+    expect(repository.listByUser).toHaveBeenCalledWith('user1');
   });
 
-  it('maps duplicate names on create to a conflict error', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeCategory.findMany.mockResolvedValue([{ name: 'Ăn uống' }, { name: 'Đi lại' }, { name: 'Nhà ở' }, { name: 'Mua sắm cá nhân' }, { name: 'Giải trí & du lịch' }, { name: 'Giáo dục & học tập' }, { name: 'Sức khỏe & thể thao' }, { name: 'Gia đình & quà tặng' }, { name: 'Đầu tư & tiết kiệm' }, { name: 'Khác' }]);
-    prisma.financeCategory.create.mockRejectedValue({ code: 'P2002' });
-    const service = createFinanceCategoriesService({ prisma } as any);
+  it('creates a non-system category and maps duplicates to 409', async () => {
+    const repository = createRepositoryMock();
+    repository.findDefaultsByNames.mockResolvedValue(ALL_DEFAULT_NAMES);
+    repository.create.mockResolvedValue(createCategory({ name: 'Cafe' }));
+    const service = createFinanceCategoriesService({ repository });
 
-    await expect(service.create('user1', { name: 'Ăn uống' })).rejects.toThrow('Finance category already exists');
+    await expect(service.create('user1', { name: 'Cafe' })).resolves.toMatchObject({ name: 'Cafe' });
+    expect(repository.create).toHaveBeenCalledWith('user1', { name: 'Cafe', isSystemCategory: false });
+
+    repository.create.mockRejectedValue(new DuplicateFinanceCategoryError());
+    await expect(service.create('user1', { name: 'Cafe' })).rejects.toMatchObject({
+      statusCode: 409,
+      message: 'Finance category already exists',
+    });
   });
 
-  it('maps duplicate names on update to a conflict error', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeCategory.updateMany.mockRejectedValue({ code: 'P2002' });
-    const service = createFinanceCategoriesService({ prisma } as any);
+  it('updates a category and reports 404 when it does not exist', async () => {
+    const repository = createRepositoryMock();
+    repository.updateForUser.mockResolvedValue(createCategory({ name: 'Cafe' }));
+    const service = createFinanceCategoriesService({ repository });
 
-    await expect(service.update('user1', 'cat1', { name: 'Ăn uống' })).rejects.toThrow('Finance category already exists');
+    await expect(service.update('user1', 'cat1', { name: 'Cafe' })).resolves.toMatchObject({ name: 'Cafe' });
+    expect(repository.updateForUser).toHaveBeenCalledWith('user1', 'cat1', { name: 'Cafe' });
+
+    repository.updateForUser.mockResolvedValue(null);
+    await expect(service.update('user1', 'missing', { name: 'Cafe' })).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Finance category not found',
+    });
+
+    repository.updateForUser.mockRejectedValue(new DuplicateFinanceCategoryError());
+    await expect(service.update('user1', 'cat1', { name: 'Cafe' })).rejects.toMatchObject({
+      statusCode: 409,
+      message: 'Finance category already exists',
+    });
+  });
+
+  it('removes a category and reports 404 when nothing was deleted', async () => {
+    const repository = createRepositoryMock();
+    repository.deleteForUser.mockResolvedValue(true);
+    const service = createFinanceCategoriesService({ repository });
+
+    await expect(service.remove('user1', 'cat1')).resolves.toBeUndefined();
+
+    repository.deleteForUser.mockResolvedValue(false);
+    await expect(service.remove('user1', 'missing')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Finance category not found',
+    });
   });
 });

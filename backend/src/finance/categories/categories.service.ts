@@ -1,9 +1,9 @@
-import type { FinanceCategory } from '@prisma/client';
-import type { BackendDeps } from '../../dependencies';
 import { conflict, notFound } from '../../errors';
+import type { FinanceCategory } from './categories.model';
+import { DuplicateFinanceCategoryError, type FinanceCategoriesRepository } from './categories.repository';
 import type { CreateFinanceCategoryInput, UpdateFinanceCategoryInput } from './categories.schema';
 
-const DEFAULT_CATEGORIES = [
+export const DEFAULT_FINANCE_CATEGORIES = [
   { name: 'Ăn uống', description: 'Nhà hàng, cà phê, đồ ăn, siêu thị thực phẩm', icon: '🍜', color: '#ef4444' },
   { name: 'Đi lại', description: 'Grab, taxi, xăng xe, vé xe, bảo dưỡng', icon: '🚕', color: '#f97316' },
   { name: 'Nhà ở', description: 'Thuê nhà, điện, nước, internet', icon: '🏠', color: '#eab308' },
@@ -16,7 +16,7 @@ const DEFAULT_CATEGORIES = [
   { name: 'Khác', description: 'Chi phí chưa thuộc nhóm nào', icon: '📌', color: '#64748b' },
 ] as const;
 
-const DEFAULT_CATEGORY_NAMES = new Set(DEFAULT_CATEGORIES.map((category) => category.name));
+const DEFAULT_CATEGORY_NAMES = DEFAULT_FINANCE_CATEGORIES.map((category) => category.name);
 
 export type FinanceCategoriesService = {
   ensureDefaults(userId: string): Promise<void>;
@@ -26,48 +26,39 @@ export type FinanceCategoriesService = {
   remove(userId: string, id: string): Promise<void>;
 };
 
-function isUniqueConstraintError(error: unknown): boolean {
-  return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'P2002');
-}
+export function createFinanceCategoriesService(
+  deps: { repository: FinanceCategoriesRepository },
+): FinanceCategoriesService {
+  async function ensureDefaults(userId: string): Promise<void> {
+    const existingNames = new Set(await deps.repository.findDefaultsByNames(userId, [...DEFAULT_CATEGORY_NAMES]));
 
-export function createFinanceCategoriesService(deps: Pick<BackendDeps, 'prisma'>): FinanceCategoriesService {
-  return {
-    async ensureDefaults(userId) {
-      const existingDefaults = await deps.prisma.financeCategory.findMany({
-        where: { userId, name: { in: [...DEFAULT_CATEGORY_NAMES] } },
-        select: { name: true },
-      });
-      const existingNames = new Set(existingDefaults.map((category) => category.name));
+    for (const [index, category] of DEFAULT_FINANCE_CATEGORIES.entries()) {
+      if (existingNames.has(category.name)) continue;
 
-      for (const [index, category] of DEFAULT_CATEGORIES.entries()) {
-        if (existingNames.has(category.name)) continue;
-
-        try {
-          await deps.prisma.financeCategory.create({
-            data: { ...category, userId, displayOrder: index, isSystemCategory: true },
-          });
-        } catch (error) {
-          if (!isUniqueConstraintError(error)) {
-            throw error;
-          }
+      try {
+        await deps.repository.create(userId, { ...category, displayOrder: index, isSystemCategory: true });
+      } catch (error) {
+        if (!(error instanceof DuplicateFinanceCategoryError)) {
+          throw error;
         }
       }
-    },
+    }
+  }
+
+  return {
+    ensureDefaults,
 
     async list(userId) {
-      await this.ensureDefaults(userId);
-      return deps.prisma.financeCategory.findMany({
-        where: { userId },
-        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-      });
+      await ensureDefaults(userId);
+      return deps.repository.listByUser(userId);
     },
 
     async create(userId, input) {
-      await this.ensureDefaults(userId);
+      await ensureDefaults(userId);
       try {
-        return await deps.prisma.financeCategory.create({ data: { ...input, userId, isSystemCategory: false } });
+        return await deps.repository.create(userId, { ...input, isSystemCategory: false });
       } catch (error) {
-        if (isUniqueConstraintError(error)) {
+        if (error instanceof DuplicateFinanceCategoryError) {
           throw conflict('Finance category already exists');
         }
         throw error;
@@ -75,24 +66,22 @@ export function createFinanceCategoriesService(deps: Pick<BackendDeps, 'prisma'>
     },
 
     async update(userId, id, input) {
-      let result: { count: number };
+      let category: FinanceCategory | null;
       try {
-        result = await deps.prisma.financeCategory.updateMany({ where: { id, userId }, data: input });
+        category = await deps.repository.updateForUser(userId, id, input);
       } catch (error) {
-        if (isUniqueConstraintError(error)) {
+        if (error instanceof DuplicateFinanceCategoryError) {
           throw conflict('Finance category already exists');
         }
         throw error;
       }
-      if (result.count === 0) throw notFound('Finance category not found');
-      const category = await deps.prisma.financeCategory.findFirst({ where: { id, userId } });
       if (!category) throw notFound('Finance category not found');
       return category;
     },
 
     async remove(userId, id) {
-      const result = await deps.prisma.financeCategory.deleteMany({ where: { id, userId } });
-      if (result.count === 0) throw notFound('Finance category not found');
+      const deleted = await deps.repository.deleteForUser(userId, id);
+      if (!deleted) throw notFound('Finance category not found');
     },
   };
 }
