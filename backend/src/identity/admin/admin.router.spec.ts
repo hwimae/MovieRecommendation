@@ -16,15 +16,10 @@ function createTestConfig(): AppConfig {
 
 function createDepsMock(user: unknown): BackendDeps {
   return {
-    prisma: {
-      user: {
-        findUnique: jest.fn().mockResolvedValue(user),
-        findMany: jest.fn().mockResolvedValue([]),
-      },
-    } as any,
+    prisma: {} as any,
     passwordHasher: { hash: jest.fn(), compare: jest.fn() },
     usersRepository: {
-      findById: jest.fn(),
+      findById: jest.fn().mockResolvedValue(user),
       findByEmail: jest.fn(),
       create: jest.fn(),
       listByStatus: jest.fn().mockResolvedValue([]),

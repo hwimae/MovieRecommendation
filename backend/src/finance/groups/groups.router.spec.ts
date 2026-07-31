@@ -17,7 +17,6 @@ function createTestConfig(): AppConfig {
 function createPrismaMock(): any {
   return {
     $transaction: jest.fn(async (callback: any) => callback(prisma)),
-    user: { findUnique: jest.fn() },
     financeGroupMember: { findMany: jest.fn(), findUnique: jest.fn() },
     financeGroup: { create: jest.fn(), findFirst: jest.fn(), deleteMany: jest.fn() },
     financeCategory: { findMany: jest.fn() },
@@ -82,7 +81,15 @@ describe('finance groups router', () => {
 
   it('validates create group body', async () => {
     const deps = createDepsMock();
-    prisma.user.findUnique.mockResolvedValue({ id: 'user1', email: 'boo@example.com', name: 'Boo', role: 'USER', status: 'APPROVED' });
+    (deps.usersRepository.findById as jest.Mock).mockResolvedValue({
+      id: 'user1',
+      email: 'boo@example.com',
+      name: 'Boo',
+      role: 'USER',
+      status: 'APPROVED',
+      createdAt: new Date('2026-06-14T00:00:00.000Z'),
+      updatedAt: new Date('2026-06-14T00:00:00.000Z'),
+    });
     const app = createApp(createTestConfig(), deps);
     const started = await listen(app);
     server = started.server;
@@ -98,7 +105,15 @@ describe('finance groups router', () => {
 
   it('lists groups for approved user', async () => {
     const deps = createDepsMock();
-    prisma.user.findUnique.mockResolvedValue({ id: 'user1', email: 'boo@example.com', name: 'Boo', role: 'USER', status: 'APPROVED' });
+    (deps.usersRepository.findById as jest.Mock).mockResolvedValue({
+      id: 'user1',
+      email: 'boo@example.com',
+      name: 'Boo',
+      role: 'USER',
+      status: 'APPROVED',
+      createdAt: new Date('2026-06-14T00:00:00.000Z'),
+      updatedAt: new Date('2026-06-14T00:00:00.000Z'),
+    });
     prisma.financeGroupMember.findMany.mockResolvedValue([
       {
         role: 'OWNER',
