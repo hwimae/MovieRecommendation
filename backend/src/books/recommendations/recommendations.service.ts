@@ -1,34 +1,14 @@
-import { Prisma } from '@prisma/client';
-import type { BackendDeps } from '../../dependencies';
 import { badRequest } from '../../errors';
+import type {
+  PopularStoryCandidate,
+  RecommendationItem,
+  RecommendationQuery,
+  RecommendationsResponse,
+  StoryAdvisorResponse,
+  StoryChunkSearchRow,
+} from './recommendations.model';
+import type { RecommendationsRepository } from './recommendations.repository';
 import type { SearchRecommendationsByVectorBody } from './recommendations.schema';
-import { searchStoryChunksByVector, type StoryChunkSearchRow } from './story-vector-search.repository';
-
-export type RecommendationQuery = {
-  limit: number;
-};
-
-type StoryCandidate = Prisma.StoryGetPayload<{ include: { category: true } }>;
-
-export type RecommendationItem = {
-  storyId: string;
-  title: string;
-  authors: string;
-  category: string;
-  averageRating: number;
-  reviewCount: number;
-  score: number;
-  reason: string;
-};
-
-export type RecommendationsResponse = {
-  items: RecommendationItem[];
-};
-
-export type StoryAdvisorResponse = {
-  answer: string;
-  recommendations: RecommendationItem[];
-};
 
 export type RecommendationsService = {
   listPopularRecommendations(query: RecommendationQuery): Promise<RecommendationsResponse>;
@@ -36,27 +16,42 @@ export type RecommendationsService = {
   searchStoryAdvisorByVector(input: SearchRecommendationsByVectorBody): Promise<StoryAdvisorResponse>;
 };
 
-export function createRecommendationsService(deps: Pick<BackendDeps, 'prisma'>): RecommendationsService {
+export function createRecommendationsService(
+  deps: { repository: RecommendationsRepository },
+): RecommendationsService {
+  async function listRecommendations(
+    query: RecommendationQuery,
+    excludedStoryIds: string[] = [],
+  ): Promise<RecommendationsResponse> {
+    const stories = await deps.repository.listPopularStories({
+      limit: query.limit,
+      excludeStoryIds: excludedStoryIds,
+    });
+
+    return {
+      items: stories
+        .filter(
+          (story) =>
+            story.userAverageRating > 0 && story.userReviewCount > 0 && !excludedStoryIds.includes(story.id),
+        )
+        .map(toRecommendationItem)
+        .sort(compareRecommendationItems)
+        .slice(0, query.limit),
+    };
+  }
+
   return {
     async listPopularRecommendations(query) {
-      return listRecommendations(deps, query);
+      return listRecommendations(query);
     },
 
     async listRecommendationsForUser(userId, query) {
-      const reviewedStories = await deps.prisma.userReview.findMany({
-        where: { userId },
-        select: { storyId: true },
-      });
-
-      return listRecommendations(
-        deps,
-        query,
-        reviewedStories.map((review) => review.storyId),
-      );
+      const reviewedStoryIds = await deps.repository.listReviewedStoryIds(userId);
+      return listRecommendations(query, reviewedStoryIds);
     },
 
     async searchStoryAdvisorByVector(input) {
-      const rows = await searchStoryChunksByVector(deps.prisma, input.embedding, input.limit);
+      const rows = await deps.repository.searchStoryChunksByVector(input.embedding, input.limit);
       const recommendations = toAdvisorRecommendations(rows, input.limit);
 
       if (recommendations.length === 0) {
@@ -107,32 +102,7 @@ function buildVectorSearchAnswer(query: string, count: number): string {
     : `Hiện chưa có truyện nào đủ gần với mô tả "${query}". Hãy thử thêm thể loại, nhân vật hoặc bối cảnh cụ thể hơn.`;
 }
 
-async function listRecommendations(
-  deps: Pick<BackendDeps, 'prisma'>,
-  query: RecommendationQuery,
-  excludedStoryIds: string[] = [],
-): Promise<RecommendationsResponse> {
-  const stories = await deps.prisma.story.findMany({
-    where: {
-      userAverageRating: { gt: 0 },
-      userReviewCount: { gt: 0 },
-      ...(excludedStoryIds.length > 0 ? { id: { notIn: excludedStoryIds } } : {}),
-    },
-    include: { category: true },
-    orderBy: [{ userReviewCount: 'desc' }, { userAverageRating: 'desc' }, { title: 'asc' }],
-    take: query.limit,
-  });
-
-  return {
-    items: stories
-      .filter((story) => story.userAverageRating > 0 && story.userReviewCount > 0 && !excludedStoryIds.includes(story.id))
-      .map(toRecommendationItem)
-      .sort(compareRecommendationItems)
-      .slice(0, query.limit),
-  };
-}
-
-function toRecommendationItem(story: StoryCandidate): RecommendationItem {
+function toRecommendationItem(story: PopularStoryCandidate): RecommendationItem {
   return {
     storyId: story.id,
     title: story.title,

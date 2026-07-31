@@ -8,11 +8,13 @@ import {
   type RecommendationsQuery,
   type SearchRecommendationsByVectorBody,
 } from './recommendations.schema';
+import { createPrismaRecommendationsRepository } from './recommendations.prisma.repository';
 import { createRecommendationsService } from './recommendations.service';
 
 export function createRecommendationsRouter(deps: BackendDeps): Router {
   const router = Router();
-  const controller = createRecommendationsController(createRecommendationsService(deps), deps);
+  const repository = createPrismaRecommendationsRepository(deps.prisma);
+  const controller = createRecommendationsController(createRecommendationsService({ repository }), deps);
 
   router.get<Record<string, string>, unknown, unknown, RecommendationsQuery>(
     '/popular',
