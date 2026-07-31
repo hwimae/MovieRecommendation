@@ -1,8 +1,8 @@
 import type { Server } from 'http';
 import type { AddressInfo } from 'net';
-import { createApp } from '../app';
-import type { AppConfig } from '../config';
-import type { BackendDeps } from '../dependencies';
+import { createApp } from '../../app';
+import type { AppConfig } from '../../config';
+import type { BackendDeps } from '../../dependencies';
 
 function createTestConfig(): AppConfig {
   return {

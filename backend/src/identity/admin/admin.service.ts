@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import type { BackendDeps } from '../dependencies';
-import { badRequest, notFound } from '../errors';
+import type { BackendDeps } from '../../dependencies';
+import { badRequest, notFound } from '../../errors';
 import type { AdminUserSummary, ListAdminUsersQuery } from './admin.schema';
 
 const adminUserSelect = {

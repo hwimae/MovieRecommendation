@@ -1,5 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
-import type { AuthUser } from '../auth/auth.schema';
+import type { AuthUser } from '../identity/auth/auth.schema';
 import type { BackendDeps } from '../dependencies';
 import { forbidden, unauthorized } from '../errors';
 

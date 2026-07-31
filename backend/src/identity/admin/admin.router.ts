@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { BackendDeps } from '../dependencies';
-import { requireAdmin, requireAuth } from '../middleware/auth';
-import { validateParams, validateQuery } from '../middleware/validate';
+import type { BackendDeps } from '../../dependencies';
+import { requireAdmin, requireAuth } from '../../middleware/auth';
+import { validateParams, validateQuery } from '../../middleware/validate';
 import { createAdminController } from './admin.controller';
 import { adminUserIdParamSchema, listAdminUsersQuerySchema } from './admin.schema';
 import { createAdminService } from './admin.service';

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
-import { unauthorized } from '../errors';
+import { unauthorized } from '../../errors';
 import type { ListMyReviewsQuery } from './reviews.schema';
 import type { ReviewsService } from './reviews.service';
 

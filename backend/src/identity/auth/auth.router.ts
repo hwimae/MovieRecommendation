@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import type { BackendDeps } from '../dependencies';
-import { requireAuth } from '../middleware/auth';
-import { validateBody } from '../middleware/validate';
+import type { BackendDeps } from '../../dependencies';
+import { requireAuth } from '../../middleware/auth';
+import { validateBody } from '../../middleware/validate';
 import { createAuthController } from './auth.controller';
 import { loginSchema, registerSchema } from './auth.schema';
 import { createAuthService } from './auth.service';

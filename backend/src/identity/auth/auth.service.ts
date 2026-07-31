@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import type { BackendDeps } from '../dependencies';
-import { conflict, forbidden, unauthorized } from '../errors';
+import type { BackendDeps } from '../../dependencies';
+import { conflict, forbidden, unauthorized } from '../../errors';
 import type { AuthResponse, AuthUser, LoginInput, RegisterInput, RegisterResponse } from './auth.schema';
 
 export type AuthService = {

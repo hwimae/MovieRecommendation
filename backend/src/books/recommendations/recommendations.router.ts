@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import type { BackendDeps } from '../dependencies';
-import { validateBody, validateQuery } from '../middleware/validate';
+import type { BackendDeps } from '../../dependencies';
+import { validateBody, validateQuery } from '../../middleware/validate';
 import { createRecommendationsController } from './recommendations.controller';
 import {
   recommendationsQuerySchema,

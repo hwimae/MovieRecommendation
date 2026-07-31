@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
-import type { BackendDeps } from '../dependencies';
-import { badRequest } from '../errors';
+import type { BackendDeps } from '../../dependencies';
+import { badRequest } from '../../errors';
 import type { SearchRecommendationsByVectorBody } from './recommendations.schema';
 import { searchStoryChunksByVector, type StoryChunkSearchRow } from './story-vector-search.repository';
 

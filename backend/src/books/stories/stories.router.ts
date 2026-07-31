@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import type { BackendDeps } from '../dependencies';
-import { validateParams, validateQuery } from '../middleware/validate';
+import type { BackendDeps } from '../../dependencies';
+import { validateParams, validateQuery } from '../../middleware/validate';
 import { createStoriesController } from './stories.controller';
 import { listStoriesQuerySchema, storyIdParamsSchema, type ListStoriesQuery } from './stories.schema';
 import { createStoriesService } from './stories.service';

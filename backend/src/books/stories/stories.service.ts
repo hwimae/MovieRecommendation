@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
-import type { BackendDeps } from '../dependencies';
-import { notFound } from '../errors';
-import { createStoryContentReader, type StoryContentReader } from '../storage/story-content-storage';
+import type { BackendDeps } from '../../dependencies';
+import { notFound } from '../../errors';
+import { createStoryContentReader, type StoryContentReader } from '../../storage/story-content-storage';
 import type { ListStoriesQuery } from './stories.schema';
 
 type StoriesServiceDeps = Pick<BackendDeps, 'prisma'> & {

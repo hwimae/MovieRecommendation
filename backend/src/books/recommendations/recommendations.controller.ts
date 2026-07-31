@@ -1,6 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
-import type { BackendDeps } from '../dependencies';
-import { unauthorized } from '../errors';
+import type { BackendDeps } from '../../dependencies';
+import { unauthorized } from '../../errors';
 import type {
   RecommendationsQuery,
   SearchRecommendationsByVectorBody,

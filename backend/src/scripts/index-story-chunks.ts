@@ -1,11 +1,11 @@
 import { Prisma, PrismaClient, type Prisma as PrismaType } from '@prisma/client';
 import { loadConfig } from '../config';
-import { createAiClient, type AiClient } from '../recommendations/ai-client';
+import { createAiClient, type AiClient } from '../books/recommendations/ai-client';
 import {
   assertStoryEmbedding,
   toStoryVectorLiteral,
-} from '../recommendations/embedding-contract';
-import { chunkStoryContent } from '../recommendations/story-chunker';
+} from '../books/recommendations/embedding-contract';
+import { chunkStoryContent } from '../books/recommendations/story-chunker';
 import { createR2StoryContentReader, getR2StoryContentConfig } from '../storage/story-content-r2';
 import { createStoryContentReader, type StoryContentReader } from '../storage/story-content-storage';
 

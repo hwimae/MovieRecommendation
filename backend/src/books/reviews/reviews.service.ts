@@ -1,6 +1,6 @@
 import { Prisma, UserReview } from '@prisma/client';
-import type { BackendDeps } from '../dependencies';
-import { notFound } from '../errors';
+import type { BackendDeps } from '../../dependencies';
+import { notFound } from '../../errors';
 import type { ListMyReviewsQuery, ReviewStoryInput } from './reviews.schema';
 
 export type MyReview = Prisma.UserReviewGetPayload<{

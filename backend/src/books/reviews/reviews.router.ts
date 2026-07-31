@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { BackendDeps } from '../dependencies';
-import { requireAuth } from '../middleware/auth';
-import { validateBody, validateQuery } from '../middleware/validate';
+import type { BackendDeps } from '../../dependencies';
+import { requireAuth } from '../../middleware/auth';
+import { validateBody, validateQuery } from '../../middleware/validate';
 import { createReviewsController } from './reviews.controller';
 import { listMyReviewsQuerySchema, reviewStorySchema, type ListMyReviewsQuery } from './reviews.schema';
 import { createReviewsService } from './reviews.service';

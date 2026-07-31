@@ -3,7 +3,7 @@ import * as bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import type { AppConfig } from './config';
 import { createFinanceAiClient, type FinanceAiClient } from './finance/ai-client';
-import { createAiClient, type AiClient } from './recommendations/ai-client';
+import { createAiClient, type AiClient } from './books/recommendations/ai-client';
 import { prisma } from './prisma';
 import { createR2StoryContentReader, getR2StoryContentConfig } from './storage/story-content-r2';
 import { createStoryContentReader, type StoryContentReader } from './storage/story-content-storage';
