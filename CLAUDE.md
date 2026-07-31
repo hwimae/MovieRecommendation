@@ -70,14 +70,18 @@ Hiện chỉ có tài liệu mô tả định hướng, chưa có lệnh runtime
 - Entry point: `backend/src/main.ts`.
 - App composition: `backend/src/app.ts`:
   - `cors`, `express.json`, global rate-limit.
-  - Gắn router theo domain: `/auth`, `/stories`, `/reviews`.
+  - Gắn router theo domain: `/auth`, `/stories`, `/reviews`, `/recommendations`, `/finance`, `/admin`.
   - 404 + error handler tập trung (`backend/src/errors.ts`).
 - Cấu hình runtime: `backend/src/config.ts` (đọc env, validate giá trị bắt buộc).
 - Truy cập DB: `backend/src/prisma.ts` tạo singleton `PrismaClient`.
-- Domain modules theo pattern router/service/schema:
-  - `auth/`: đăng ký, đăng nhập, lấy profile hiện tại.
-  - `stories/`: danh sách truyện + chi tiết truyện.
-  - `reviews/`: viết review truyện (cần JWT) + xem review của user hiện tại.
+- Module backend gom theo domain: `identity/` (users, auth, admin), `books/` (stories, reviews, recommendations), `finance/` (budgets, categories, expenses, groups, spending, chat, advice, invoices). URL mount không đổi.
+- Domain modules theo pattern 5 tầng `router/controller/service/repository/model` (chuẩn tham chiếu: `finance/budgets`):
+  - `<module>.model.ts`: domain types thuần, không import `@prisma/client`.
+  - `<module>.repository.ts`: interface persistence; lỗi Prisma được dịch tại đây (P2002 → domain error, P2025/count=0 → null/false, P2034 → retry trong repo); transaction gói trọn trong một method.
+  - `<module>.prisma.repository.ts`: implementation Prisma + mapper row→model (mapper dùng chung được export: `toFinanceCategory`, `toFinanceBudget`, `toFinanceExpense`, `toFinanceInvoice`).
+  - `<module>.service.ts`: business logic, chỉ phụ thuộc repository interface (không thấy Prisma).
+  - `<module>.router.ts`: nơi lắp ráp repository → service → controller.
+  - Entity User dùng data-module chung `identity/users/` (không router); instance `usersRepository` nằm trong `BackendDeps` cho auth, admin và middleware `requireAuth` dùng chung.
 - Middleware dùng chung:
   - `middleware/validate.ts`: validate request bằng Zod.
   - `middleware/auth.ts`: verify JWT, gắn `req.user`.
@@ -125,3 +129,5 @@ Hiện chỉ có tài liệu mô tả định hướng, chưa có lệnh runtime
 - Khi sửa giao diện, ưu tiên chỉnh trong thư mục `ui` để đồng bộ giao diện trên toàn bộ dự án.
 - Khi thay đổi API contract (auth/stories/reviews), cần cập nhật đồng bộ parser/type phía frontend để tránh lệch payload runtime.
 - Không chỉnh `backend/.env` thật nếu không được yêu cầu; chỉ cập nhật `.env.example` hoặc hướng dẫn cấu hình.
+- Mọi field tiền tệ (`amount`, `limitAmount`, `totalAmount`) trả về qua API là JSON number (đã chuẩn hóa từ Decimal-string vào 2026-07); parser frontend (`parseMoney`) chấp nhận cả hai nhưng backend luôn phát number.
+- Khi thêm module backend mới, tạo đủ 5 tầng theo chuẩn `finance/budgets`; service spec mock repository interface, prisma.repository spec mock PrismaClient.
