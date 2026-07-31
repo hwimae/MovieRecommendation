@@ -1,59 +1,77 @@
+import type { MyReview, UserReview } from './reviews.model';
+import type { ReviewsRepository } from './reviews.repository';
 import { createReviewsService } from './reviews.service';
 
-describe('reviews.service', () => {
-  it('listMyReviews applies pagination and returns paginated payload', async () => {
-    const items = [
-      {
-        id: 'ur-1',
-        userId: 'u-1',
-        storyId: 's-1',
-        rating: 4.5,
-        title: 'Hay',
-        content: 'Noi dung',
-        reviewedAt: new Date('2025-01-01T00:00:00.000Z'),
-        createdAt: new Date('2025-01-01T00:00:00.000Z'),
-        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
-        story: {
-          id: 's-1',
-          title: 'Story 1',
-          authors: 'Author 1',
-          externalAverageRating: 4.2,
-          externalReviewCount: 120,
-          userAverageRating: 4.4,
-          userReviewCount: 20,
-        },
-      },
-    ];
+const reviewedAt = new Date('2026-06-01T00:00:00.000Z');
 
-    const findMany = jest.fn().mockResolvedValue(items);
-    const count = jest.fn().mockResolvedValue(42);
-    const transaction = jest.fn().mockResolvedValue([items, 42]);
+function createReview(): UserReview {
+  return {
+    id: 'rev1',
+    userId: 'user1',
+    storyId: 'story1',
+    rating: 4.5,
+    title: 'Hay',
+    content: 'Đáng đọc',
+    reviewedAt,
+    createdAt: reviewedAt,
+    updatedAt: reviewedAt,
+  };
+}
 
-    const prisma = {
-      userReview: { findMany, count },
-      $transaction: transaction,
-    };
+function createMyReview(): MyReview {
+  return {
+    ...createReview(),
+    story: {
+      id: 'story1',
+      title: 'Tiên hiệp ký',
+      authors: 'Tác giả A',
+      externalAverageRating: 4.2,
+      externalReviewCount: 120,
+      userAverageRating: 4.8,
+      userReviewCount: 5,
+    },
+  };
+}
 
-    const service = createReviewsService({ prisma } as never);
+function createRepositoryMock(): jest.Mocked<ReviewsRepository> {
+  return {
+    upsertForStoryAndRefreshRating: jest.fn(),
+    listByUser: jest.fn(),
+  };
+}
 
-    const result = await service.listMyReviews('u-1', { page: 2, limit: 10 });
+describe('createReviewsService', () => {
+  it('reviews a story through the repository', async () => {
+    const repository = createRepositoryMock();
+    repository.upsertForStoryAndRefreshRating.mockResolvedValue(createReview());
+    const service = createReviewsService({ repository });
+    const input = { storyId: 'story1', rating: 4.5, title: 'Hay', content: 'Đáng đọc' };
 
-    expect(findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { userId: 'u-1' },
-        orderBy: { reviewedAt: 'desc' },
-        skip: 10,
-        take: 10,
-      }),
-    );
-    expect(count).toHaveBeenCalledWith({ where: { userId: 'u-1' } });
-    expect(transaction).toHaveBeenCalledTimes(1);
+    await expect(service.reviewStory('user1', input)).resolves.toMatchObject({ id: 'rev1' });
+    expect(repository.upsertForStoryAndRefreshRating).toHaveBeenCalledWith('user1', input);
+  });
 
-    expect(result).toEqual({
-      items,
-      total: 42,
+  it('reports a missing story', async () => {
+    const repository = createRepositoryMock();
+    repository.upsertForStoryAndRefreshRating.mockResolvedValue(null);
+    const service = createReviewsService({ repository });
+
+    await expect(
+      service.reviewStory('user1', { storyId: 'missing', rating: 4, title: 'x', content: 'y' }),
+    ).rejects.toMatchObject({ statusCode: 404, message: 'Story not found' });
+  });
+
+  it('lists my reviews with pagination echo', async () => {
+    const repository = createRepositoryMock();
+    repository.listByUser.mockResolvedValue({ items: [createMyReview()], total: 7 });
+    const service = createReviewsService({ repository });
+
+    await expect(service.listMyReviews('user1', { page: 2, limit: 5 })).resolves.toEqual({
+      items: [createMyReview()],
+      total: 7,
       page: 2,
-      limit: 10,
+      limit: 5,
     });
+    expect(repository.listByUser).toHaveBeenCalledWith('user1', { page: 2, limit: 5 });
   });
 });
