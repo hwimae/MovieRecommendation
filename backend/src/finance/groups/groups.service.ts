@@ -1,35 +1,19 @@
-import type { FinanceCategory, FinanceGroupRole, Prisma } from '@prisma/client';
-import type { BackendDeps } from '../../dependencies';
 import { conflict, forbidden, notFound } from '../../errors';
+import type { FinanceBudget } from '../budgets/budgets.model';
+import type { FinanceExpense } from '../expenses/expenses.model';
 import { summarizeExpenses } from '../spending/spending.model';
+import type {
+  FinanceGroupDetailDto,
+  FinanceGroupMemberDashboardDto,
+  FinanceGroupMemberDto,
+  FinanceGroupSummaryDto,
+} from './groups.model';
+import type {
+  FinanceGroupMembership,
+  FinanceGroupsRepository,
+  FinanceGroupWithMembers,
+} from './groups.repository';
 import type { AddFinanceGroupMemberInput, CreateFinanceGroupInput } from './groups.schema';
-
-const groupInclude = {
-  members: {
-    include: { user: { select: { id: true, email: true, name: true } } },
-    orderBy: { createdAt: 'asc' },
-  },
-} satisfies Prisma.FinanceGroupInclude;
-
-const memberInclude = { user: { select: { id: true, email: true, name: true } } } satisfies Prisma.FinanceGroupMemberInclude;
-const expenseInclude = { category: true, invoice: true } satisfies Prisma.FinanceExpenseInclude;
-const budgetInclude = { category: true } satisfies Prisma.FinanceBudgetInclude;
-
-type FinanceGroupWithMembers = Prisma.FinanceGroupGetPayload<{ include: typeof groupInclude }>;
-type FinanceGroupMemberWithUser = Prisma.FinanceGroupMemberGetPayload<{ include: typeof memberInclude }>;
-export type FinanceExpenseWithRelations = Prisma.FinanceExpenseGetPayload<{ include: typeof expenseInclude }>;
-export type FinanceBudgetWithCategory = Prisma.FinanceBudgetGetPayload<{ include: typeof budgetInclude }>;
-
-export type FinanceGroupMemberDto = { userId: string; name: string; email: string; role: FinanceGroupRole; joinedAt: Date };
-export type FinanceGroupSummaryDto = { id: string; name: string; ownerId: string; currentUserRole: FinanceGroupRole; memberCount: number; createdAt: Date; updatedAt: Date };
-export type FinanceGroupDetailDto = FinanceGroupSummaryDto & { members: FinanceGroupMemberDto[] };
-export type FinanceGroupMemberDashboardDto = {
-  member: { userId: string; name: string; email: string };
-  categories: FinanceCategory[];
-  budgets: FinanceBudgetWithCategory[];
-  expenses: FinanceExpenseWithRelations[];
-  summary: ReturnType<typeof summarizeExpenses>;
-};
 
 export type FinanceGroupsService = {
   list(userId: string): Promise<FinanceGroupSummaryDto[]>;
@@ -39,17 +23,26 @@ export type FinanceGroupsService = {
   removeMember(userId: string, groupId: string, memberUserId: string): Promise<void>;
   removeGroup(userId: string, groupId: string): Promise<void>;
   memberDashboard(userId: string, groupId: string, memberUserId: string): Promise<FinanceGroupMemberDashboardDto>;
-  memberExpenses(userId: string, groupId: string, memberUserId: string): Promise<FinanceExpenseWithRelations[]>;
-  memberBudgets(userId: string, groupId: string, memberUserId: string): Promise<FinanceBudgetWithCategory[]>;
+  memberExpenses(userId: string, groupId: string, memberUserId: string): Promise<FinanceExpense[]>;
+  memberBudgets(userId: string, groupId: string, memberUserId: string): Promise<FinanceBudget[]>;
   deleteMemberExpense(userId: string, groupId: string, memberUserId: string, expenseId: string): Promise<void>;
   deleteMemberBudget(userId: string, groupId: string, memberUserId: string, budgetId: string): Promise<void>;
 };
 
-function toMemberDto(member: FinanceGroupMemberWithUser): FinanceGroupMemberDto {
-  return { userId: member.userId, name: member.user.name, email: member.user.email, role: member.role, joinedAt: member.createdAt };
+function toMemberDto(membership: FinanceGroupMembership): FinanceGroupMemberDto {
+  return {
+    userId: membership.userId,
+    name: membership.user.name,
+    email: membership.user.email,
+    role: membership.role,
+    joinedAt: membership.createdAt,
+  };
 }
 
-function toGroupDetailDto(group: FinanceGroupWithMembers, currentUserRole: FinanceGroupRole): FinanceGroupDetailDto {
+function toGroupDetailDto(
+  group: FinanceGroupWithMembers,
+  currentUserRole: FinanceGroupMembership['role'],
+): FinanceGroupDetailDto {
   return {
     id: group.id,
     name: group.name,
@@ -62,94 +55,87 @@ function toGroupDetailDto(group: FinanceGroupWithMembers, currentUserRole: Finan
   };
 }
 
-async function requireMembership(prisma: BackendDeps['prisma'], groupId: string, userId: string) {
-  const membership = await prisma.financeGroupMember.findUnique({ where: { groupId_userId: { groupId, userId } }, include: memberInclude });
-  if (!membership) throw forbidden('Finance group access required');
-  return membership;
-}
+export function createFinanceGroupsService(
+  deps: { repository: FinanceGroupsRepository },
+): FinanceGroupsService {
+  async function requireMembership(groupId: string, userId: string): Promise<FinanceGroupMembership> {
+    const membership = await deps.repository.findMembership(groupId, userId);
+    if (!membership) throw forbidden('Finance group access required');
+    return membership;
+  }
 
-async function requireOwner(prisma: BackendDeps['prisma'], groupId: string, userId: string) {
-  const group = await prisma.financeGroup.findFirst({ where: { id: groupId }, select: { id: true, ownerId: true } });
-  if (!group) throw notFound('Finance group not found');
-  if (group.ownerId !== userId) throw forbidden('Finance group owner access required');
-  return group;
-}
+  async function requireOwner(groupId: string, userId: string): Promise<void> {
+    const group = await deps.repository.findGroupOwnership(groupId);
+    if (!group) throw notFound('Finance group not found');
+    if (group.ownerId !== userId) throw forbidden('Finance group owner access required');
+  }
 
-async function requireTargetMember(prisma: BackendDeps['prisma'], groupId: string, memberUserId: string) {
-  const membership = await prisma.financeGroupMember.findUnique({ where: { groupId_userId: { groupId, userId: memberUserId } }, include: memberInclude });
-  if (!membership) throw notFound('Finance group member not found');
-  return membership;
-}
+  async function requireTargetMember(groupId: string, memberUserId: string): Promise<FinanceGroupMembership> {
+    const membership = await deps.repository.findMembership(groupId, memberUserId);
+    if (!membership) throw notFound('Finance group member not found');
+    return membership;
+  }
 
-export function createFinanceGroupsService(deps: Pick<BackendDeps, 'prisma'>): FinanceGroupsService {
   return {
     async list(userId) {
-      const memberships = await deps.prisma.financeGroupMember.findMany({
-        where: { userId },
-        include: { group: { include: { members: true } } },
-        orderBy: { createdAt: 'desc' },
-      });
+      const memberships = await deps.repository.listMembershipsWithGroups(userId);
 
       return memberships.map((membership) => ({
         id: membership.group.id,
         name: membership.group.name,
         ownerId: membership.group.ownerId,
         currentUserRole: membership.role,
-        memberCount: membership.group.members.length,
+        memberCount: membership.group.memberCount,
         createdAt: membership.group.createdAt,
         updatedAt: membership.group.updatedAt,
       }));
     },
 
     async create(userId, input) {
-      const group = await deps.prisma.$transaction((tx) =>
-        tx.financeGroup.create({
-          data: { name: input.name.trim(), ownerId: userId, members: { create: { userId, role: 'OWNER' } } },
-          include: groupInclude,
-        }),
-      );
+      const group = await deps.repository.createGroupWithOwner(userId, input.name.trim());
       return toGroupDetailDto(group, 'OWNER');
     },
 
     async detail(userId, groupId) {
-      const membership = await requireMembership(deps.prisma, groupId, userId);
-      const group = await deps.prisma.financeGroup.findFirst({ where: { id: groupId }, include: groupInclude });
+      const membership = await requireMembership(groupId, userId);
+      const group = await deps.repository.findGroupWithMembers(groupId);
       if (!group) throw notFound('Finance group not found');
       return toGroupDetailDto(group, membership.role);
     },
 
     async addMember(userId, groupId, input) {
-      await requireOwner(deps.prisma, groupId, userId);
-      const user = await deps.prisma.user.findUnique({ where: { email: input.email.trim() }, select: { id: true, email: true, name: true } });
+      await requireOwner(groupId, userId);
+      const user = await deps.repository.findUserByEmail(input.email.trim());
       if (!user) throw notFound('User not found');
-      const existing = await deps.prisma.financeGroupMember.findUnique({ where: { groupId_userId: { groupId, userId: user.id } } });
+      const existing = await deps.repository.findMembership(groupId, user.id);
       if (existing) throw conflict('User is already a finance group member');
-      const member = await deps.prisma.financeGroupMember.create({ data: { groupId, userId: user.id, role: 'MEMBER' }, include: memberInclude });
+      const member = await deps.repository.addMember(groupId, user.id);
       return toMemberDto(member);
     },
 
     async removeMember(userId, groupId, memberUserId) {
-      await requireOwner(deps.prisma, groupId, userId);
-      const target = await requireTargetMember(deps.prisma, groupId, memberUserId);
+      await requireOwner(groupId, userId);
+      const target = await requireTargetMember(groupId, memberUserId);
       if (target.role === 'OWNER') throw conflict('Finance group owner cannot be removed as a member');
-      const result = await deps.prisma.financeGroupMember.deleteMany({ where: { groupId, userId: memberUserId } });
-      if (result.count === 0) throw notFound('Finance group member not found');
+      const removed = await deps.repository.removeMember(groupId, memberUserId);
+      if (!removed) throw notFound('Finance group member not found');
     },
 
     async removeGroup(userId, groupId) {
-      await requireOwner(deps.prisma, groupId, userId);
-      const result = await deps.prisma.financeGroup.deleteMany({ where: { id: groupId, ownerId: userId } });
-      if (result.count === 0) throw notFound('Finance group not found');
+      await requireOwner(groupId, userId);
+      const deleted = await deps.repository.deleteGroupOwnedBy(groupId, userId);
+      if (!deleted) throw notFound('Finance group not found');
     },
 
     async memberDashboard(userId, groupId, memberUserId) {
-      await requireMembership(deps.prisma, groupId, userId);
-      const target = await requireTargetMember(deps.prisma, groupId, memberUserId);
+      await requireMembership(groupId, userId);
+      const target = await requireTargetMember(groupId, memberUserId);
       const [categories, budgets, expenses] = await Promise.all([
-        deps.prisma.financeCategory.findMany({ where: { userId: memberUserId }, orderBy: { displayOrder: 'asc' } }),
-        deps.prisma.financeBudget.findMany({ where: { userId: memberUserId }, include: budgetInclude, orderBy: { createdAt: 'desc' } }),
-        deps.prisma.financeExpense.findMany({ where: { userId: memberUserId }, include: expenseInclude, orderBy: { spentAt: 'desc' } }),
+        deps.repository.listMemberCategories(memberUserId),
+        deps.repository.listMemberBudgets(memberUserId),
+        deps.repository.listMemberExpenses(memberUserId),
       ]);
+
       return {
         member: { userId: target.userId, name: target.user.name, email: target.user.email },
         categories,
@@ -160,29 +146,29 @@ export function createFinanceGroupsService(deps: Pick<BackendDeps, 'prisma'>): F
     },
 
     async memberExpenses(userId, groupId, memberUserId) {
-      await requireMembership(deps.prisma, groupId, userId);
-      await requireTargetMember(deps.prisma, groupId, memberUserId);
-      return deps.prisma.financeExpense.findMany({ where: { userId: memberUserId }, include: expenseInclude, orderBy: { spentAt: 'desc' } });
+      await requireMembership(groupId, userId);
+      await requireTargetMember(groupId, memberUserId);
+      return deps.repository.listMemberExpenses(memberUserId);
     },
 
     async memberBudgets(userId, groupId, memberUserId) {
-      await requireMembership(deps.prisma, groupId, userId);
-      await requireTargetMember(deps.prisma, groupId, memberUserId);
-      return deps.prisma.financeBudget.findMany({ where: { userId: memberUserId }, include: budgetInclude, orderBy: { createdAt: 'desc' } });
+      await requireMembership(groupId, userId);
+      await requireTargetMember(groupId, memberUserId);
+      return deps.repository.listMemberBudgets(memberUserId);
     },
 
     async deleteMemberExpense(userId, groupId, memberUserId, expenseId) {
-      await requireOwner(deps.prisma, groupId, userId);
-      await requireTargetMember(deps.prisma, groupId, memberUserId);
-      const result = await deps.prisma.financeExpense.deleteMany({ where: { id: expenseId, userId: memberUserId } });
-      if (result.count === 0) throw notFound('Finance expense not found');
+      await requireOwner(groupId, userId);
+      await requireTargetMember(groupId, memberUserId);
+      const deleted = await deps.repository.deleteMemberExpense(memberUserId, expenseId);
+      if (!deleted) throw notFound('Finance expense not found');
     },
 
     async deleteMemberBudget(userId, groupId, memberUserId, budgetId) {
-      await requireOwner(deps.prisma, groupId, userId);
-      await requireTargetMember(deps.prisma, groupId, memberUserId);
-      const result = await deps.prisma.financeBudget.deleteMany({ where: { id: budgetId, userId: memberUserId } });
-      if (result.count === 0) throw notFound('Finance budget not found');
+      await requireOwner(groupId, userId);
+      await requireTargetMember(groupId, memberUserId);
+      const deleted = await deps.repository.deleteMemberBudget(memberUserId, budgetId);
+      if (!deleted) throw notFound('Finance budget not found');
     },
   };
 }

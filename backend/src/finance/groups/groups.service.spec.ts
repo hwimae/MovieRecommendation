@@ -1,171 +1,261 @@
-import type { BackendDeps } from '../../dependencies';
-import { HttpError } from '../../errors';
+import type { FinanceGroupMembership, FinanceGroupsRepository, FinanceGroupWithMembers } from './groups.repository';
 import { createFinanceGroupsService } from './groups.service';
 
-function createPrismaMock() {
-  const base = {
-    user: { findUnique: jest.fn() },
-    financeGroup: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), deleteMany: jest.fn() },
-    financeGroupMember: { findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), create: jest.fn(), deleteMany: jest.fn() },
-    financeCategory: { findMany: jest.fn() },
-    financeBudget: { findMany: jest.fn(), deleteMany: jest.fn() },
-    financeExpense: { findMany: jest.fn(), deleteMany: jest.fn() },
-  };
+const createdAt = new Date('2026-06-14T00:00:00.000Z');
 
+function createMembership(overrides: Partial<FinanceGroupMembership> = {}): FinanceGroupMembership {
   return {
-    $transaction: jest.fn(async (callback: (tx: typeof base) => unknown): Promise<unknown> => callback(base)),
-    ...base,
+    groupId: 'group1',
+    userId: 'user1',
+    role: 'OWNER',
+    createdAt,
+    user: { id: 'user1', email: 'boo@example.com', name: 'Boo' },
+    ...overrides,
   };
 }
 
-let prisma: ReturnType<typeof createPrismaMock>;
-
-function createService() {
-  prisma = createPrismaMock();
-  return createFinanceGroupsService({ prisma: prisma as unknown as BackendDeps['prisma'] });
+function createGroup(): FinanceGroupWithMembers {
+  return {
+    id: 'group1',
+    name: 'Gia đình',
+    ownerId: 'user1',
+    createdAt,
+    updatedAt: createdAt,
+    members: [createMembership()],
+  };
 }
 
-function expectHttpError(error: unknown, statusCode: number, message: string) {
-  expect(error).toBeInstanceOf(HttpError);
-  expect((error as HttpError).statusCode).toBe(statusCode);
-  expect((error as HttpError).message).toBe(message);
+function createRepositoryMock(): jest.Mocked<FinanceGroupsRepository> {
+  return {
+    listMembershipsWithGroups: jest.fn(),
+    createGroupWithOwner: jest.fn(),
+    findGroupWithMembers: jest.fn(),
+    findMembership: jest.fn(),
+    findGroupOwnership: jest.fn(),
+    findUserByEmail: jest.fn(),
+    addMember: jest.fn(),
+    removeMember: jest.fn(),
+    deleteGroupOwnedBy: jest.fn(),
+    listMemberCategories: jest.fn(),
+    listMemberBudgets: jest.fn(),
+    listMemberExpenses: jest.fn(),
+    deleteMemberExpense: jest.fn(),
+    deleteMemberBudget: jest.fn(),
+  };
 }
 
 describe('createFinanceGroupsService', () => {
-  it('creates a group and owner membership in one transaction', async () => {
-    const service = createService();
-    prisma.financeGroup.create.mockResolvedValue({
-      id: 'group1',
-      name: 'Gia đình',
-      ownerId: 'owner1',
-      members: [
-        {
-          userId: 'owner1',
-          role: 'OWNER',
-          createdAt: new Date('2026-06-14T00:00:00.000Z'),
-          user: { id: 'owner1', name: 'Boo', email: 'boo@example.com' },
-        },
-      ],
-      createdAt: new Date('2026-06-14T00:00:00.000Z'),
-      updatedAt: new Date('2026-06-14T00:00:00.000Z'),
-    });
-
-    const result = await service.create('owner1', { name: ' Gia đình ' });
-
-    expect(prisma.financeGroup.create).toHaveBeenCalledWith({
-      data: {
-        name: 'Gia đình',
-        ownerId: 'owner1',
-        members: { create: { userId: 'owner1', role: 'OWNER' } },
-      },
-      include: expect.any(Object),
-    });
-    expect(result.currentUserRole).toBe('OWNER');
-    expect(result.members).toHaveLength(1);
-  });
-
-  it('adds a registered user as member when caller is owner', async () => {
-    const service = createService();
-    prisma.financeGroup.findFirst.mockResolvedValue({ id: 'group1', ownerId: 'owner1' });
-    prisma.user.findUnique.mockResolvedValue({ id: 'member1', email: 'member@example.com', name: 'An' });
-    prisma.financeGroupMember.findUnique.mockResolvedValueOnce(null);
-    prisma.financeGroupMember.create.mockResolvedValue({
-      userId: 'member1',
-      role: 'MEMBER',
-      createdAt: new Date('2026-06-14T00:00:00.000Z'),
-      user: { id: 'member1', email: 'member@example.com', name: 'An' },
-    });
-
-    const result = await service.addMember('owner1', 'group1', { email: 'member@example.com' });
-
-    expect(prisma.financeGroupMember.create).toHaveBeenCalledWith({
-      data: { groupId: 'group1', userId: 'member1', role: 'MEMBER' },
-      include: { user: { select: { id: true, email: true, name: true } } },
-    });
-    expect(result).toMatchObject({ userId: 'member1', email: 'member@example.com', role: 'MEMBER' });
-  });
-
-  it('rejects member management by non-owner', async () => {
-    const service = createService();
-    prisma.financeGroup.findFirst.mockResolvedValue({ id: 'group1', ownerId: 'owner1' });
-
-    try {
-      await service.addMember('member2', 'group1', { email: 'new@example.com' });
-      throw new Error('Expected addMember to fail');
-    } catch (error) {
-      expectHttpError(error, 403, 'Finance group owner access required');
-    }
-  });
-
-  it('returns member dashboard from the selected member real finance data', async () => {
-    const service = createService();
-    prisma.financeGroupMember.findUnique.mockResolvedValueOnce({ role: 'MEMBER' });
-    prisma.financeGroupMember.findUnique.mockResolvedValueOnce({
-      role: 'MEMBER',
-      userId: 'member1',
-      user: { id: 'member1', name: 'An', email: 'an@example.com' },
-    });
-    prisma.financeCategory.findMany.mockResolvedValue([{ id: 'cat1', userId: 'member1', name: 'Ăn uống' }]);
-    prisma.financeBudget.findMany.mockResolvedValue([
+  it('lists group summaries for the current user', async () => {
+    const repository = createRepositoryMock();
+    repository.listMembershipsWithGroups.mockResolvedValue([
       {
-        id: 'budget1',
-        userId: 'member1',
-        categoryId: 'cat1',
-        limitAmount: 1000000,
-        period: 'monthly',
-        alertThreshold: 0.8,
-        category: { id: 'cat1', name: 'Ăn uống' },
+        role: 'OWNER',
+        group: { id: 'group1', name: 'Gia đình', ownerId: 'user1', memberCount: 2, createdAt, updatedAt: createdAt },
       },
     ]);
-    prisma.financeExpense.findMany.mockResolvedValue([
-      { id: 'expense1', userId: 'member1', amount: { toString: () => '25000' }, category: { id: 'cat1', name: 'Ăn uống' } },
+    const service = createFinanceGroupsService({ repository });
+
+    await expect(service.list('user1')).resolves.toEqual([
+      {
+        id: 'group1',
+        name: 'Gia đình',
+        ownerId: 'user1',
+        currentUserRole: 'OWNER',
+        memberCount: 2,
+        createdAt,
+        updatedAt: createdAt,
+      },
     ]);
+  });
 
-    const result = await service.memberDashboard('viewer1', 'group1', 'member1');
+  it('creates a group with a trimmed name and owner role', async () => {
+    const repository = createRepositoryMock();
+    repository.createGroupWithOwner.mockResolvedValue(createGroup());
+    const service = createFinanceGroupsService({ repository });
 
-    expect(prisma.financeExpense.findMany).toHaveBeenCalledWith({
-      where: { userId: 'member1' },
-      include: { category: true, invoice: true },
-      orderBy: { spentAt: 'desc' },
+    const detail = await service.create('user1', { name: '  Gia đình  ' });
+
+    expect(repository.createGroupWithOwner).toHaveBeenCalledWith('user1', 'Gia đình');
+    expect(detail).toMatchObject({
+      id: 'group1',
+      currentUserRole: 'OWNER',
+      memberCount: 1,
+      members: [{ userId: 'user1', name: 'Boo', email: 'boo@example.com', role: 'OWNER', joinedAt: createdAt }],
     });
-    expect(result.member).toEqual({ userId: 'member1', name: 'An', email: 'an@example.com' });
-    expect(result.summary.totalAmount).toBe(25000);
   });
 
-  it('allows owner to delete a member expense', async () => {
-    const service = createService();
-    prisma.financeGroup.findFirst.mockResolvedValue({ id: 'group1', ownerId: 'owner1' });
-    prisma.financeGroupMember.findUnique.mockResolvedValueOnce({ role: 'MEMBER' });
-    prisma.financeExpense.deleteMany.mockResolvedValue({ count: 1 });
+  it('blocks non-members from group detail', async () => {
+    const repository = createRepositoryMock();
+    repository.findMembership.mockResolvedValue(null);
+    const service = createFinanceGroupsService({ repository });
 
-    await service.deleteMemberExpense('owner1', 'group1', 'member1', 'expense1');
-
-    expect(prisma.financeExpense.deleteMany).toHaveBeenCalledWith({ where: { id: 'expense1', userId: 'member1' } });
+    await expect(service.detail('intruder', 'group1')).rejects.toMatchObject({
+      statusCode: 403,
+      message: 'Finance group access required',
+    });
   });
 
-  it('rejects member deleting a budget', async () => {
-    const service = createService();
-    prisma.financeGroup.findFirst.mockResolvedValue({ id: 'group1', ownerId: 'owner1' });
+  it('reports a missing group on detail', async () => {
+    const repository = createRepositoryMock();
+    repository.findMembership.mockResolvedValue(createMembership({ role: 'MEMBER' }));
+    repository.findGroupWithMembers.mockResolvedValue(null);
+    const service = createFinanceGroupsService({ repository });
 
-    try {
-      await service.deleteMemberBudget('member2', 'group1', 'member1', 'budget1');
-      throw new Error('Expected deleteMemberBudget to fail');
-    } catch (error) {
-      expectHttpError(error, 403, 'Finance group owner access required');
-    }
+    await expect(service.detail('user1', 'group1')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Finance group not found',
+    });
   });
 
-  it('does not grant owner actions from a mismatched OWNER membership row', async () => {
-    const service = createService();
-    prisma.financeGroup.findFirst.mockResolvedValue({ id: 'group1', ownerId: 'owner1' });
-    prisma.financeGroupMember.findUnique.mockResolvedValue({ role: 'OWNER' });
+  it('adds a member as the owner', async () => {
+    const repository = createRepositoryMock();
+    repository.findGroupOwnership.mockResolvedValue({ id: 'group1', ownerId: 'user1' });
+    repository.findUserByEmail.mockResolvedValue({ id: 'user2', email: 'mai@example.com', name: 'Mai' });
+    repository.findMembership.mockResolvedValue(null);
+    repository.addMember.mockResolvedValue(
+      createMembership({ userId: 'user2', role: 'MEMBER', user: { id: 'user2', email: 'mai@example.com', name: 'Mai' } }),
+    );
+    const service = createFinanceGroupsService({ repository });
 
-    try {
-      await service.removeGroup('member2', 'group1');
-      throw new Error('Expected removeGroup to fail');
-    } catch (error) {
-      expectHttpError(error, 403, 'Finance group owner access required');
-    }
-    expect(prisma.financeGroup.deleteMany).not.toHaveBeenCalled();
+    await expect(service.addMember('user1', 'group1', { email: ' mai@example.com ' })).resolves.toEqual({
+      userId: 'user2',
+      name: 'Mai',
+      email: 'mai@example.com',
+      role: 'MEMBER',
+      joinedAt: createdAt,
+    });
+    expect(repository.findUserByEmail).toHaveBeenCalledWith('mai@example.com');
+  });
+
+  it('rejects addMember for non-owners and unknown users and duplicates', async () => {
+    const repository = createRepositoryMock();
+    const service = createFinanceGroupsService({ repository });
+
+    repository.findGroupOwnership.mockResolvedValue({ id: 'group1', ownerId: 'someone-else' });
+    await expect(service.addMember('user1', 'group1', { email: 'mai@example.com' })).rejects.toMatchObject({
+      statusCode: 403,
+      message: 'Finance group owner access required',
+    });
+
+    repository.findGroupOwnership.mockResolvedValue({ id: 'group1', ownerId: 'user1' });
+    repository.findUserByEmail.mockResolvedValue(null);
+    await expect(service.addMember('user1', 'group1', { email: 'ghost@example.com' })).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'User not found',
+    });
+
+    repository.findUserByEmail.mockResolvedValue({ id: 'user2', email: 'mai@example.com', name: 'Mai' });
+    repository.findMembership.mockResolvedValue(createMembership({ userId: 'user2', role: 'MEMBER' }));
+    await expect(service.addMember('user1', 'group1', { email: 'mai@example.com' })).rejects.toMatchObject({
+      statusCode: 409,
+      message: 'User is already a finance group member',
+    });
+  });
+
+  it('blocks removing the owner membership', async () => {
+    const repository = createRepositoryMock();
+    repository.findGroupOwnership.mockResolvedValue({ id: 'group1', ownerId: 'user1' });
+    repository.findMembership.mockResolvedValue(createMembership());
+    const service = createFinanceGroupsService({ repository });
+
+    await expect(service.removeMember('user1', 'group1', 'user1')).rejects.toMatchObject({
+      statusCode: 409,
+      message: 'Finance group owner cannot be removed as a member',
+    });
+  });
+
+  it('removes members and reports missing deletions', async () => {
+    const repository = createRepositoryMock();
+    repository.findGroupOwnership.mockResolvedValue({ id: 'group1', ownerId: 'user1' });
+    repository.findMembership.mockResolvedValue(
+      createMembership({ userId: 'user2', role: 'MEMBER', user: { id: 'user2', email: 'mai@example.com', name: 'Mai' } }),
+    );
+    repository.removeMember.mockResolvedValue(false);
+    const service = createFinanceGroupsService({ repository });
+
+    await expect(service.removeMember('user1', 'group1', 'user2')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Finance group member not found',
+    });
+  });
+
+  it('deletes a group only for its owner', async () => {
+    const repository = createRepositoryMock();
+    repository.findGroupOwnership.mockResolvedValue({ id: 'group1', ownerId: 'user1' });
+    repository.deleteGroupOwnedBy.mockResolvedValue(true);
+    const service = createFinanceGroupsService({ repository });
+
+    await expect(service.removeGroup('user1', 'group1')).resolves.toBeUndefined();
+    expect(repository.deleteGroupOwnedBy).toHaveBeenCalledWith('group1', 'user1');
+  });
+
+  it('assembles the member dashboard with a spending summary', async () => {
+    const repository = createRepositoryMock();
+    repository.findMembership
+      .mockResolvedValueOnce(createMembership())
+      .mockResolvedValueOnce(
+        createMembership({ userId: 'user2', role: 'MEMBER', user: { id: 'user2', email: 'mai@example.com', name: 'Mai' } }),
+      );
+    repository.listMemberCategories.mockResolvedValue([]);
+    repository.listMemberBudgets.mockResolvedValue([]);
+    repository.listMemberExpenses.mockResolvedValue([
+      {
+        id: 'exp1',
+        userId: 'user2',
+        invoiceId: null,
+        categoryId: 'cat1',
+        description: null,
+        merchantName: null,
+        amount: 150000,
+        spentAt: createdAt,
+        confirmedByUser: true,
+        sourceType: 'manual',
+        sourceMetadata: null,
+        createdAt,
+        updatedAt: createdAt,
+        category: {
+          id: 'cat1',
+          userId: 'user2',
+          name: 'Ăn uống',
+          description: null,
+          icon: null,
+          color: null,
+          isSystemCategory: true,
+          displayOrder: 0,
+          createdAt,
+          updatedAt: createdAt,
+        },
+        invoice: null,
+      },
+    ]);
+    const service = createFinanceGroupsService({ repository });
+
+    const dashboard = await service.memberDashboard('user1', 'group1', 'user2');
+
+    expect(dashboard.member).toEqual({ userId: 'user2', name: 'Mai', email: 'mai@example.com' });
+    expect(dashboard.summary).toEqual({
+      totalAmount: 150000,
+      categories: [{ categoryId: 'cat1', categoryName: 'Ăn uống', amount: 150000 }],
+    });
+  });
+
+  it('maps member expense/budget deletions to 404 when nothing matched', async () => {
+    const repository = createRepositoryMock();
+    repository.findGroupOwnership.mockResolvedValue({ id: 'group1', ownerId: 'user1' });
+    repository.findMembership.mockResolvedValue(
+      createMembership({ userId: 'user2', role: 'MEMBER', user: { id: 'user2', email: 'mai@example.com', name: 'Mai' } }),
+    );
+    repository.deleteMemberExpense.mockResolvedValue(false);
+    repository.deleteMemberBudget.mockResolvedValue(false);
+    const service = createFinanceGroupsService({ repository });
+
+    await expect(service.deleteMemberExpense('user1', 'group1', 'user2', 'exp1')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Finance expense not found',
+    });
+    await expect(service.deleteMemberBudget('user1', 'group1', 'user2', 'bud1')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Finance budget not found',
+    });
   });
 });
