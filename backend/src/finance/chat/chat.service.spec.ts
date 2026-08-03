@@ -1,225 +1,265 @@
+import type { FinanceChatAiResponse } from '../ai-client';
+import type { FinanceExpense } from '../expenses/expenses.model';
+import { parseStrictSpentAt, type FinanceChatSession } from './chat.model';
+import type { FinanceChatRepository } from './chat.repository';
 import { createFinanceChatService } from './chat.service';
 
-function createPrismaMock() {
+const createdAt = new Date('2026-06-01T00:00:00.000Z');
+
+function createSession(): FinanceChatSession {
+  return { id: 'ses1', userId: 'user1', sessionTitle: 'Chat', status: 'active', createdAt, updatedAt: createdAt };
+}
+
+function createExpense(): FinanceExpense {
   return {
-    financeChatSession: { create: jest.fn(), findFirst: jest.fn(), updateMany: jest.fn() },
-    financeChatMessage: { create: jest.fn(), findMany: jest.fn() },
-    financeCategory: { findMany: jest.fn(), findFirst: jest.fn() },
-    financeBudget: { findMany: jest.fn() },
-    financeExpense: { findMany: jest.fn(), create: jest.fn() },
-    financeInvoice: { findFirst: jest.fn() },
+    id: 'exp1',
+    userId: 'user1',
+    invoiceId: null,
+    categoryId: 'cat1',
+    description: 'Cơm trưa',
+    merchantName: null,
+    amount: 125000,
+    spentAt: createdAt,
+    confirmedByUser: true,
+    sourceType: 'text',
+    sourceMetadata: { confirmedFromChat: true },
+    createdAt,
+    updatedAt: createdAt,
+    category: null,
+    invoice: null,
   };
 }
 
+function createAiResponse(overrides: Partial<FinanceChatAiResponse> = {}): FinanceChatAiResponse {
+  return {
+    assistantMessage: 'Đã ghi nhận',
+    extractedExpense: null,
+    budgetWarning: null,
+    advice: null,
+    requiresConfirmation: false,
+    askingConfirmation: false,
+    interrupted: false,
+    ...overrides,
+  };
+}
+
+function createRepositoryMock(): jest.Mocked<FinanceChatRepository> {
+  return {
+    createSession: jest.fn(),
+    findSessionForUser: jest.fn(),
+    closeSessionForUser: jest.fn(),
+    createUserMessage: jest.fn(),
+    createAssistantMessage: jest.fn(),
+    listSessionMessages: jest.fn(),
+    loadChatContext: jest.fn(),
+    categoryExistsForUser: jest.fn(),
+    invoiceExistsForUser: jest.fn(),
+    createConfirmedExpense: jest.fn(),
+  };
+}
+
+function createDeps() {
+  return {
+    repository: createRepositoryMock(),
+    financeAiClient: {
+      extractExpenseText: jest.fn(),
+      extractInvoiceImage: jest.fn(),
+      generateAdvice: jest.fn(),
+      chatRespond: jest.fn(),
+    },
+  };
+}
+
+const emptyContext = { categories: [], budgets: [], recentExpenses: [], chatHistory: [] };
+
+describe('parseStrictSpentAt', () => {
+  it('parses date-only values as UTC midnight', () => {
+    expect(parseStrictSpentAt('2026-06-01').toISOString()).toBe('2026-06-01T00:00:00.000Z');
+  });
+
+  it('parses offset datetimes preserving the instant', () => {
+    expect(parseStrictSpentAt('2026-06-01T10:15:00.000+07:00').toISOString()).toBe('2026-06-01T03:15:00.000Z');
+  });
+
+  it('rejects impossible calendar dates and malformed input', () => {
+    expect(() => parseStrictSpentAt('2026-02-30')).toThrow('Invalid expense spentAt');
+    expect(() => parseStrictSpentAt('hôm qua')).toThrow('Invalid expense spentAt');
+  });
+});
+
 describe('createFinanceChatService', () => {
-  it('start returns sessionId and initialMessage mentioning trợ lý AI', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeChatSession.create.mockResolvedValue({ id: 'session1', userId: 'user1', sessionTitle: 'Chat' });
+  it('starts a session with the default title', async () => {
+    const deps = createDeps();
+    deps.repository.createSession.mockResolvedValue(createSession());
+    const service = createFinanceChatService(deps);
 
-    const service = createFinanceChatService({ prisma, financeAiClient: {} } as any);
+    const result = await service.start('user1', {});
 
-    await expect(service.start('user1', { sessionTitle: 'Chat' })).resolves.toMatchObject({
-      sessionId: 'session1',
-      initialMessage: expect.stringContaining('trợ lý AI'),
+    expect(deps.repository.createSession).toHaveBeenCalledWith('user1', 'Finance Chat Session');
+    expect(result).toEqual({
+      sessionId: 'ses1',
+      initialMessage: 'Xin chào! Tôi là trợ lý AI quản lý chi tiêu. Bạn có thể nhập chi tiêu hoặc tải ảnh hóa đơn.',
     });
   });
 
-  it('sendMessage sends categories, budgets, recentExpenses and chatHistory to financeAiClient.chatRespond', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeChatSession.findFirst.mockResolvedValue({ id: 'session1', userId: 'user1' });
-    prisma.financeCategory.findMany.mockResolvedValue([{ id: 'cat1', name: 'Ăn uống' }]);
-    prisma.financeBudget.findMany.mockResolvedValue([{ id: 'budget1', categoryId: 'cat1', category: { id: 'cat1', name: 'Ăn uống' } }]);
-    prisma.financeExpense.findMany.mockResolvedValue([{ id: 'exp1', amount: 25000, category: { id: 'cat1', name: 'Ăn uống' } }]);
-    prisma.financeChatMessage.findMany.mockResolvedValue([
-      { id: 'm1', role: 'user', content: 'ăn sáng 25k' },
-      { id: 'm2', role: 'assistant', content: 'Bạn muốn mình ghi nhận khoản này không?' },
-    ]);
+  it('rejects messages for a session the user does not own', async () => {
+    const deps = createDeps();
+    deps.repository.findSessionForUser.mockResolvedValue(null);
+    const service = createFinanceChatService(deps);
 
-    const financeAiClient = {
-      chatRespond: jest.fn().mockResolvedValue({
-        assistantMessage: 'Đã phân tích tin nhắn.',
-        requiresConfirmation: true,
-        askingConfirmation: true,
-        interrupted: false,
-      }),
-    };
+    await expect(
+      service.sendMessage('user1', 'ghost', { content: 'hi', messageType: 'text', isConfirmationResponse: false }),
+    ).rejects.toMatchObject({ statusCode: 404, message: 'Finance chat session not found' });
+  });
 
-    const service = createFinanceChatService({ prisma, financeAiClient } as any);
+  it('sends the message with full context and stores both chat messages', async () => {
+    const deps = createDeps();
+    deps.repository.findSessionForUser.mockResolvedValue(createSession());
+    deps.repository.loadChatContext.mockResolvedValue(emptyContext);
+    const aiResponse = createAiResponse();
+    deps.financeAiClient.chatRespond.mockResolvedValue(aiResponse);
+    const service = createFinanceChatService(deps);
 
-    await service.sendMessage('user1', 'session1', {
-      content: 'ăn sáng 25k',
+    const result = await service.sendMessage('user1', 'ses1', {
+      content: 'ăn trưa 125k',
       messageType: 'text',
       isConfirmationResponse: false,
     });
 
-    expect(financeAiClient.chatRespond).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sessionId: 'session1',
-        message: 'ăn sáng 25k',
-        messageType: 'text',
-        isConfirmationResponse: false,
-        pendingExpense: null,
-        categories: [{ id: 'cat1', name: 'Ăn uống' }],
-        budgets: [{ id: 'budget1', categoryId: 'cat1', category: { id: 'cat1', name: 'Ăn uống' } }],
-        recentExpenses: [{ id: 'exp1', amount: 25000, category: { id: 'cat1', name: 'Ăn uống' } }],
-        chatHistory: [
-          { id: 'm1', role: 'user', content: 'ăn sáng 25k' },
-          { id: 'm2', role: 'assistant', content: 'Bạn muốn mình ghi nhận khoản này không?' },
-        ],
-        locale: 'vi-VN',
-      }),
-    );
+    expect(deps.repository.createUserMessage).toHaveBeenCalledWith('ses1', 'ăn trưa 125k');
+    expect(deps.financeAiClient.chatRespond).toHaveBeenCalledWith({
+      sessionId: 'ses1',
+      message: 'ăn trưa 125k',
+      messageType: 'text',
+      isConfirmationResponse: false,
+      pendingExpense: null,
+      categories: [],
+      budgets: [],
+      recentExpenses: [],
+      chatHistory: [],
+      locale: 'vi-VN',
+    });
+    expect(result).toEqual({ ...aiResponse, savedExpense: null });
+    expect(deps.repository.createAssistantMessage).toHaveBeenCalledWith('ses1', 'Đã ghi nhận', {
+      ...aiResponse,
+      savedExpense: null,
+    });
   });
 
-  it('confirmed pending expense saves for current user and returns savedExpense', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeChatSession.findFirst.mockResolvedValue({ id: 'session1', userId: 'user1' });
-    prisma.financeCategory.findMany.mockResolvedValue([{ id: 'cat1', name: 'Ăn uống' }]);
-    prisma.financeBudget.findMany.mockResolvedValue([]);
-    prisma.financeExpense.findMany.mockResolvedValue([]);
-    prisma.financeChatMessage.findMany.mockResolvedValue([]);
-    prisma.financeCategory.findFirst.mockResolvedValue({ id: 'cat1' });
-    prisma.financeExpense.create.mockResolvedValue({
-      id: 'expense1',
-      userId: 'user1',
-      invoiceId: null,
-      categoryId: 'cat1',
-      description: null,
-      merchantName: 'Highlands',
-      amount: 25000,
-      spentAt: new Date('2026-06-11T10:15:30.000Z'),
-      confirmedByUser: true,
-      sourceType: 'text',
-      createdAt: new Date('2026-06-11T10:16:00.000Z'),
-      updatedAt: new Date('2026-06-11T10:16:00.000Z'),
-      category: { id: 'cat1', name: 'Ăn uống' },
-      invoice: null,
-    });
+  it('saves the confirmed expense after checking ownership', async () => {
+    const deps = createDeps();
+    deps.repository.findSessionForUser.mockResolvedValue(createSession());
+    deps.repository.loadChatContext.mockResolvedValue(emptyContext);
+    deps.repository.categoryExistsForUser.mockResolvedValue(true);
+    deps.repository.createConfirmedExpense.mockResolvedValue(createExpense());
+    deps.financeAiClient.chatRespond.mockResolvedValue(
+      createAiResponse({ extractedExpense: { amount: 125000, categoryId: 'cat1', spentAt: '2026-06-01' } }),
+    );
+    const service = createFinanceChatService(deps);
 
-    const financeAiClient = {
-      chatRespond: jest.fn().mockResolvedValue({
-        assistantMessage: 'Đã lưu chi tiêu Highlands 25.000đ.',
-        extractedExpense: {
-          merchantName: 'Highlands',
-          amount: 25000,
-          categoryId: 'cat1',
-        },
-        requiresConfirmation: false,
-        askingConfirmation: false,
-        interrupted: false,
-      }),
-    };
-
-    const service = createFinanceChatService({ prisma, financeAiClient } as any);
-
-    const result = await service.sendMessage('user1', 'session1', {
+    const result = await service.sendMessage('user1', 'ses1', {
       content: 'đúng rồi',
       messageType: 'text',
       isConfirmationResponse: true,
-      pendingExpense: {
-        merchantName: 'Highlands',
-        amount: 25000,
-        categoryId: 'cat1',
-      },
+      pendingExpense: { description: 'Cơm trưa' },
     });
 
-    expect(prisma.financeExpense.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        userId: 'user1',
-        amount: 25000,
-        merchantName: 'Highlands',
-        categoryId: 'cat1',
-        sourceType: 'text',
-        confirmedByUser: true,
-      }),
-      include: { category: true, invoice: true },
+    expect(deps.repository.categoryExistsForUser).toHaveBeenCalledWith('user1', 'cat1');
+    expect(deps.repository.createConfirmedExpense).toHaveBeenCalledWith({
+      userId: 'user1',
+      invoiceId: undefined,
+      categoryId: 'cat1',
+      description: 'Cơm trưa',
+      merchantName: undefined,
+      amount: 125000,
+      spentAt: new Date('2026-06-01T00:00:00.000Z'),
+      confirmedByUser: true,
+      sourceType: 'text',
+      sourceMetadata: { confirmedFromChat: true },
     });
-
-    expect(prisma.financeChatMessage.create).toHaveBeenLastCalledWith({
-      data: expect.objectContaining({
-        role: 'assistant',
-        metadata: expect.objectContaining({
-          savedExpense: expect.objectContaining({
-            id: 'expense1',
-            userId: 'user1',
-            invoiceId: null,
-            categoryId: 'cat1',
-            description: null,
-            merchantName: 'Highlands',
-            amount: 25000,
-            spentAt: '2026-06-11T10:15:30.000Z',
-            confirmedByUser: true,
-            sourceType: 'text',
-            createdAt: '2026-06-11T10:16:00.000Z',
-            updatedAt: '2026-06-11T10:16:00.000Z',
-          }),
-        }),
-      }),
-    });
-
-    expect(result).toEqual({
-      assistantMessage: 'Đã lưu chi tiêu Highlands 25.000đ.',
-      extractedExpense: {
-        merchantName: 'Highlands',
-        amount: 25000,
-        categoryId: 'cat1',
-      },
-      requiresConfirmation: false,
-      askingConfirmation: false,
-      interrupted: false,
-      savedExpense: {
-        id: 'expense1',
-        userId: 'user1',
-        invoiceId: null,
-        categoryId: 'cat1',
-        description: null,
-        merchantName: 'Highlands',
-        amount: 25000,
-        spentAt: '2026-06-11T10:15:30.000Z',
-        confirmedByUser: true,
-        sourceType: 'text',
-        createdAt: '2026-06-11T10:16:00.000Z',
-        updatedAt: '2026-06-11T10:16:00.000Z',
-      },
+    expect(result.savedExpense).toEqual({
+      id: 'exp1',
+      userId: 'user1',
+      invoiceId: null,
+      categoryId: 'cat1',
+      description: 'Cơm trưa',
+      merchantName: null,
+      amount: 125000,
+      spentAt: '2026-06-01T00:00:00.000Z',
+      confirmedByUser: true,
+      sourceType: 'text',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      updatedAt: '2026-06-01T00:00:00.000Z',
     });
   });
 
-  it('rejects rollover spentAt dates before saving', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeChatSession.findFirst.mockResolvedValue({ id: 'session1', userId: 'user1' });
-    prisma.financeCategory.findMany.mockResolvedValue([]);
-    prisma.financeBudget.findMany.mockResolvedValue([]);
-    prisma.financeExpense.findMany.mockResolvedValue([]);
-    prisma.financeChatMessage.findMany.mockResolvedValue([]);
-
-    const financeAiClient = {
-      chatRespond: jest.fn().mockResolvedValue({
-        assistantMessage: 'Đã ghi nhận chi tiêu.',
-        extractedExpense: {
-          merchantName: 'Highlands',
-          amount: 25000,
-          spentAt: '2026-02-30',
-        },
-        requiresConfirmation: false,
-        askingConfirmation: false,
-        interrupted: false,
-      }),
-    };
-
-    const service = createFinanceChatService({ prisma, financeAiClient } as any);
+  it('rejects a confirmed expense with an invalid amount', async () => {
+    const deps = createDeps();
+    deps.repository.findSessionForUser.mockResolvedValue(createSession());
+    deps.repository.loadChatContext.mockResolvedValue(emptyContext);
+    deps.financeAiClient.chatRespond.mockResolvedValue(
+      createAiResponse({ extractedExpense: { amount: 0 } }),
+    );
+    const service = createFinanceChatService(deps);
 
     await expect(
-      service.sendMessage('user1', 'session1', {
-        content: 'đúng rồi',
-        messageType: 'text',
-        isConfirmationResponse: true,
-        pendingExpense: {
-          merchantName: 'Highlands',
-          amount: 25000,
-        },
-      }),
-    ).rejects.toThrow('Invalid expense spentAt');
+      service.sendMessage('user1', 'ses1', { content: 'ok', messageType: 'text', isConfirmationResponse: true }),
+    ).rejects.toMatchObject({ statusCode: 400, message: 'Invalid expense amount' });
+    expect(deps.repository.createConfirmedExpense).not.toHaveBeenCalled();
+  });
 
-    expect(prisma.financeExpense.create).not.toHaveBeenCalled();
+  it('rejects a confirmed expense with a foreign category', async () => {
+    const deps = createDeps();
+    deps.repository.findSessionForUser.mockResolvedValue(createSession());
+    deps.repository.loadChatContext.mockResolvedValue(emptyContext);
+    deps.repository.categoryExistsForUser.mockResolvedValue(false);
+    deps.financeAiClient.chatRespond.mockResolvedValue(
+      createAiResponse({ extractedExpense: { amount: 1000, categoryId: 'cat9' } }),
+    );
+    const service = createFinanceChatService(deps);
+
+    await expect(
+      service.sendMessage('user1', 'ses1', { content: 'ok', messageType: 'text', isConfirmationResponse: true }),
+    ).rejects.toMatchObject({ statusCode: 400, message: 'Finance category not found' });
+  });
+
+  it('does not save when the AI still requires confirmation', async () => {
+    const deps = createDeps();
+    deps.repository.findSessionForUser.mockResolvedValue(createSession());
+    deps.repository.loadChatContext.mockResolvedValue(emptyContext);
+    deps.financeAiClient.chatRespond.mockResolvedValue(
+      createAiResponse({ requiresConfirmation: true, extractedExpense: { amount: 1000 } }),
+    );
+    const service = createFinanceChatService(deps);
+
+    const result = await service.sendMessage('user1', 'ses1', {
+      content: 'ăn trưa',
+      messageType: 'text',
+      isConfirmationResponse: true,
+    });
+
+    expect(result.savedExpense).toBeNull();
+    expect(deps.repository.createConfirmedExpense).not.toHaveBeenCalled();
+  });
+
+  it('lists history for an owned session', async () => {
+    const deps = createDeps();
+    deps.repository.findSessionForUser.mockResolvedValue(createSession());
+    const messages = [{ id: 'msg1', sessionId: 'ses1', role: 'user', content: 'hi', metadata: null, createdAt }];
+    deps.repository.listSessionMessages.mockResolvedValue(messages);
+    const service = createFinanceChatService(deps);
+
+    await expect(service.history('user1', 'ses1')).resolves.toEqual(messages);
+  });
+
+  it('reports a missing session on close', async () => {
+    const deps = createDeps();
+    deps.repository.closeSessionForUser.mockResolvedValue(false);
+    const service = createFinanceChatService(deps);
+
+    await expect(service.close('user1', 'ghost')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Finance chat session not found',
+    });
   });
 });

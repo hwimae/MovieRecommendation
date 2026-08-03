@@ -1,15 +1,15 @@
 import cors from 'cors';
 import express, { type Express } from 'express';
 import rateLimit from 'express-rate-limit';
-import { createAdminRouter } from './admin/admin.router';
-import { createAuthRouter } from './auth/auth.router';
+import { createAdminRouter } from './identity/admin/admin.router';
+import { createAuthRouter } from './identity/auth/auth.router';
 import type { AppConfig } from './config';
 import type { BackendDeps } from './dependencies';
 import { createErrorHandler, notFound } from './errors';
 import { createFinanceRouter } from './finance/finance.router';
-import { createRecommendationsRouter } from './recommendations/recommendations.router';
-import { createReviewsRouter } from './reviews/reviews.router';
-import { createStoriesRouter } from './stories/stories.router';
+import { createRecommendationsRouter } from './books/recommendations/recommendations.router';
+import { createReviewsRouter } from './books/reviews/reviews.router';
+import { createStoriesRouter } from './books/stories/stories.router';
 
 export function createApp(config: AppConfig, deps: BackendDeps): Express {
   const app = express();

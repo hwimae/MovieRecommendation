@@ -13,10 +13,8 @@ function createDepsMock(user: unknown) {
     tokenService: {
       verifyAccessToken: jest.fn().mockReturnValue({ sub: 'user1', email: 'boo@example.com' }),
     },
-    prisma: {
-      user: {
-        findUnique: jest.fn().mockResolvedValue(user),
-      },
+    usersRepository: {
+      findById: jest.fn().mockResolvedValue(user),
     },
   };
 }
@@ -35,12 +33,15 @@ describe('requireAuth', () => {
       name: 'Boo',
       role: 'USER',
       status: 'APPROVED',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     });
     const req = createRequestMock();
     const next = createNextMock();
 
     await requireAuth(deps as any)(req, createResponseMock(), next);
 
+    expect(deps.usersRepository.findById).toHaveBeenCalledWith('user1');
     expect(req.user).toEqual({
       id: 'user1',
       email: 'boo@example.com',
@@ -58,7 +59,20 @@ describe('requireAuth', () => {
       name: 'Boo',
       role: 'USER',
       status: 'PENDING',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     });
+    const req = createRequestMock();
+    const next = createNextMock();
+
+    await requireAuth(deps as any)(req, createResponseMock(), next);
+
+    expect(req.user).toBeUndefined();
+    expect(next.mock.calls[0][0]).toMatchObject({ statusCode: 401, message: 'Unauthorized' });
+  });
+
+  it('rejects a valid token when the user no longer exists', async () => {
+    const deps = createDepsMock(null);
     const req = createRequestMock();
     const next = createNextMock();
 

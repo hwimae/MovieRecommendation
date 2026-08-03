@@ -17,7 +17,6 @@ function createTestConfig(): AppConfig {
 function createPrismaMock(): any {
   return {
     $transaction: jest.fn(async (callback: any) => callback(prisma)),
-    user: { findUnique: jest.fn() },
     financeGroupMember: { findMany: jest.fn(), findUnique: jest.fn() },
     financeGroup: { create: jest.fn(), findFirst: jest.fn(), deleteMany: jest.fn() },
     financeCategory: { findMany: jest.fn() },
@@ -33,6 +32,13 @@ function createDepsMock(): BackendDeps {
   return {
     prisma: prisma as BackendDeps['prisma'],
     passwordHasher: { hash: jest.fn(), compare: jest.fn() },
+    usersRepository: {
+      findById: jest.fn(),
+      findByEmail: jest.fn(),
+      create: jest.fn(),
+      listByStatus: jest.fn(),
+      updateStatus: jest.fn(),
+    },
     tokenService: { signAccessToken: jest.fn(), verifyAccessToken: jest.fn(() => ({ sub: 'user1', email: 'boo@example.com' })) },
     aiClient: {} as BackendDeps['aiClient'],
     financeAiClient: {} as BackendDeps['financeAiClient'],
@@ -75,7 +81,15 @@ describe('finance groups router', () => {
 
   it('validates create group body', async () => {
     const deps = createDepsMock();
-    prisma.user.findUnique.mockResolvedValue({ id: 'user1', email: 'boo@example.com', name: 'Boo', role: 'USER', status: 'APPROVED' });
+    (deps.usersRepository.findById as jest.Mock).mockResolvedValue({
+      id: 'user1',
+      email: 'boo@example.com',
+      name: 'Boo',
+      role: 'USER',
+      status: 'APPROVED',
+      createdAt: new Date('2026-06-14T00:00:00.000Z'),
+      updatedAt: new Date('2026-06-14T00:00:00.000Z'),
+    });
     const app = createApp(createTestConfig(), deps);
     const started = await listen(app);
     server = started.server;
@@ -91,7 +105,15 @@ describe('finance groups router', () => {
 
   it('lists groups for approved user', async () => {
     const deps = createDepsMock();
-    prisma.user.findUnique.mockResolvedValue({ id: 'user1', email: 'boo@example.com', name: 'Boo', role: 'USER', status: 'APPROVED' });
+    (deps.usersRepository.findById as jest.Mock).mockResolvedValue({
+      id: 'user1',
+      email: 'boo@example.com',
+      name: 'Boo',
+      role: 'USER',
+      status: 'APPROVED',
+      createdAt: new Date('2026-06-14T00:00:00.000Z'),
+      updatedAt: new Date('2026-06-14T00:00:00.000Z'),
+    });
     prisma.financeGroupMember.findMany.mockResolvedValue([
       {
         role: 'OWNER',

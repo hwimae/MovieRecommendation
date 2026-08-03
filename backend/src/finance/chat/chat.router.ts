@@ -4,13 +4,15 @@ import { requireAuth } from '../../middleware/auth';
 import { validateBody, validateParams } from '../../middleware/validate';
 import { financeSessionIdParamSchema } from '../finance.schema';
 import { createFinanceChatController } from './chat.controller';
+import { createPrismaFinanceChatRepository } from './chat.prisma.repository';
 import { createFinanceChatService } from './chat.service';
 import { sendFinanceChatMessageSchema, startFinanceChatSchema } from './chat.schema';
 
 export function createFinanceChatRouter(deps: BackendDeps): Router {
   const router = Router();
+  const repository = createPrismaFinanceChatRepository(deps.prisma);
   const controller = createFinanceChatController(createFinanceChatService({
-    prisma: deps.prisma,
+    repository,
     financeAiClient: deps.financeAiClient,
   }));
 

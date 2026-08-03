@@ -4,6 +4,7 @@ import type { BackendDeps } from '../../dependencies';
 import { requireAuth } from '../../middleware/auth';
 import { createFinanceInvoicesController } from './invoices.controller';
 import { createFinanceInvoicesService } from './invoices.service';
+import { createPrismaFinanceInvoicesRepository } from './invoices.prisma.repository';
 import { FINANCE_INVOICE_UPLOAD_DIR } from './invoices.storage';
 
 export const FINANCE_INVOICE_MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -24,7 +25,11 @@ const upload = multer({
 
 export function createFinanceInvoicesRouter(deps: BackendDeps): Router {
   const router = Router();
-  const controller = createFinanceInvoicesController(createFinanceInvoicesService(deps));
+  const repository = createPrismaFinanceInvoicesRepository(deps.prisma);
+  const controller = createFinanceInvoicesController(createFinanceInvoicesService({
+    repository,
+    financeAiClient: deps.financeAiClient,
+  }));
 
   router.use(requireAuth(deps));
   router.get('/', controller.list);

@@ -4,6 +4,7 @@ import { requireAuth } from '../../middleware/auth';
 import { validateBody, validateParams } from '../../middleware/validate';
 import { createFinanceGroupsController } from './groups.controller';
 import { createFinanceGroupsService } from './groups.service';
+import { createPrismaFinanceGroupsRepository } from './groups.prisma.repository';
 import {
   addFinanceGroupMemberSchema,
   createFinanceGroupSchema,
@@ -15,7 +16,8 @@ import {
 
 export function createFinanceGroupsRouter(deps: BackendDeps): Router {
   const router = Router();
-  const controller = createFinanceGroupsController(createFinanceGroupsService(deps));
+  const repository = createPrismaFinanceGroupsRepository(deps.prisma);
+  const controller = createFinanceGroupsController(createFinanceGroupsService({ repository }));
 
   router.use(requireAuth(deps));
   router.get('/', controller.list);

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
-import type { AuthUser } from '../auth/auth.schema';
+import type { AuthUser } from '../identity/auth/auth.schema';
 import type { BackendDeps } from '../dependencies';
 import { forbidden, unauthorized } from '../errors';
 
@@ -17,7 +17,7 @@ export function requireAuth<
   ReqBody = unknown,
   ReqQuery = unknown,
   Locals extends Record<string, any> = Record<string, any>,
->(deps: Pick<BackendDeps, 'prisma' | 'tokenService'>): RequestHandler<P, ResBody, ReqBody, ReqQuery, Locals> {
+>(deps: Pick<BackendDeps, 'usersRepository' | 'tokenService'>): RequestHandler<P, ResBody, ReqBody, ReqQuery, Locals> {
   return async (req: Request<P, ResBody, ReqBody, ReqQuery, Locals>, _res: Response, next: NextFunction) => {
     try {
       const header = req.header('authorization');
@@ -27,10 +27,7 @@ export function requireAuth<
       }
 
       const payload = deps.tokenService.verifyAccessToken(token);
-      const user = await deps.prisma.user.findUnique({
-        where: { id: payload.sub },
-        select: { id: true, email: true, name: true, role: true, status: true },
-      });
+      const user = await deps.usersRepository.findById(payload.sub);
       if (!user || user.status !== 'APPROVED') {
         throw unauthorized('Unauthorized');
       }

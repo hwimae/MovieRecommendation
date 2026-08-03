@@ -4,12 +4,14 @@ import { requireAuth } from '../../middleware/auth';
 import { validateBody, validateParams } from '../../middleware/validate';
 import { financeIdParamSchema } from '../finance.schema';
 import { createFinanceExpensesController } from './expenses.controller';
+import { createPrismaFinanceExpensesRepository } from './expenses.prisma.repository';
 import { createFinanceExpensesService } from './expenses.service';
 import { createFinanceExpenseSchema, updateFinanceExpenseSchema } from './expenses.schema';
 
 export function createFinanceExpensesRouter(deps: BackendDeps): Router {
   const router = Router();
-  const controller = createFinanceExpensesController(createFinanceExpensesService(deps));
+  const repository = createPrismaFinanceExpensesRepository(deps.prisma);
+  const controller = createFinanceExpensesController(createFinanceExpensesService({ repository }));
 
   router.use(requireAuth(deps));
   router.get('/', controller.list);

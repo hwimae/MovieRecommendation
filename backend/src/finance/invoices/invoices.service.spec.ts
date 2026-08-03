@@ -1,184 +1,173 @@
-import { badGateway, validationError } from '../../errors';
+import path from 'path';
+import { HttpError } from '../../errors';
+import type { FinanceInvoice } from './invoices.model';
+import type { FinanceInvoicesRepository } from './invoices.repository';
 import { createFinanceInvoicesService } from './invoices.service';
+import { FINANCE_INVOICE_UPLOAD_ROOT } from './invoices.storage';
 
-function createPrismaMock() {
+const createdAt = new Date('2026-06-01T00:00:00.000Z');
+
+function createInvoice(overrides: Partial<FinanceInvoice> = {}): FinanceInvoice {
   return {
-    financeInvoice: {
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
+    id: 'inv1',
+    userId: 'user1',
+    filename: 'bill.png',
+    filePath: path.join(FINANCE_INVOICE_UPLOAD_ROOT, 'bill.png'),
+    storeName: null,
+    purchasedAt: null,
+    totalAmount: null,
+    extractedData: null,
+    status: 'pending',
+    createdAt,
+    updatedAt: createdAt,
+    ...overrides,
+  };
+}
+
+function createFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
+  return {
+    fieldname: 'file',
+    originalname: 'bill.png',
+    encoding: '7bit',
+    mimetype: 'image/png',
+    size: 4,
+    buffer: Buffer.from('data'),
+    destination: FINANCE_INVOICE_UPLOAD_ROOT,
+    filename: 'bill.png',
+    path: path.join(FINANCE_INVOICE_UPLOAD_ROOT, 'bill.png'),
+    stream: undefined as never,
+    ...overrides,
+  };
+}
+
+function createRepositoryMock(): jest.Mocked<FinanceInvoicesRepository> {
+  return {
+    listByUser: jest.fn(),
+    createPending: jest.fn(),
+    markFailed: jest.fn(),
+    applyExtraction: jest.fn(),
+  };
+}
+
+function createDeps() {
+  return {
+    repository: createRepositoryMock(),
+    financeAiClient: {
+      extractExpenseText: jest.fn(),
+      extractInvoiceImage: jest.fn(),
+      generateAdvice: jest.fn(),
+      chatRespond: jest.fn(),
     },
   };
 }
 
-function createFile(): Express.Multer.File {
-  const buffer = Buffer.from('Highlands\nTotal: 25,000 VND');
-
-  return {
-    fieldname: 'file',
-    originalname: 'receipt.txt',
-    encoding: '7bit',
-    mimetype: 'text/plain',
-    size: buffer.length,
-    destination: 'uploads/finance',
-    filename: 'receipt.txt',
-    path: 'uploads/finance/receipt.txt',
-    buffer,
-    stream: undefined as any,
-  };
-}
-
 describe('createFinanceInvoicesService', () => {
-  it('lists invoices for the current user', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeInvoice.findMany.mockResolvedValue([{ id: 'invoice1' }]);
-    const service = createFinanceInvoicesService({ prisma, financeAiClient: {} as any } as any);
+  it('lists invoices through the repository', async () => {
+    const deps = createDeps();
+    const invoices = [createInvoice()];
+    deps.repository.listByUser.mockResolvedValue(invoices);
+    const service = createFinanceInvoicesService(deps);
 
-    await expect(service.list('user1')).resolves.toEqual([{ id: 'invoice1' }]);
-    expect(prisma.financeInvoice.findMany).toHaveBeenCalledWith({ where: { userId: 'user1' }, orderBy: { createdAt: 'desc' } });
+    await expect(service.list('user1')).resolves.toEqual(invoices);
+    expect(deps.repository.listByUser).toHaveBeenCalledWith('user1');
   });
 
-  it('processes upload, stores OCR result, and returns pending expense context', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeInvoice.create.mockResolvedValue({
-      id: 'invoice1',
-      userId: 'user1',
-      filename: 'receipt.txt',
-      filePath: 'uploads\\finance\\receipt.txt',
-      status: 'pending',
-    });
-    prisma.financeInvoice.update.mockResolvedValue({
-      id: 'invoice1',
-      userId: 'user1',
-      filename: 'receipt.txt',
-      filePath: 'uploads\\finance\\receipt.txt',
-      status: 'processed',
-      storeName: 'Highlands',
-      totalAmount: 25000,
-      purchasedAt: new Date('2026-06-11T09:30:00.000Z'),
-      extractedData: { vat: '10%' },
-    });
+  it('rejects uploads whose stored path escapes the upload root', async () => {
+    const deps = createDeps();
+    const service = createFinanceInvoicesService(deps);
 
-    const financeAiClient = {
-      extractInvoiceImage: jest.fn().mockResolvedValue({
-        storeName: 'Highlands',
-        totalAmount: 25000,
-        purchasedAt: '2026-06-11T09:30:00.000Z',
-        rawText: 'Highlands\nTotal: 25,000 VND',
-        extractedData: { vat: '10%' },
-        assistantMessage: 'Đã đọc hóa đơn Highlands.',
-      }),
-    };
+    await expect(
+      service.processUpload('user1', createFile({ path: '/etc/passwd' })),
+    ).rejects.toMatchObject({ statusCode: 400, message: 'Invalid finance invoice upload path' });
+    expect(deps.repository.createPending).not.toHaveBeenCalled();
+  });
 
-    const service = createFinanceInvoicesService({ prisma, financeAiClient } as any);
-
-    await expect(service.processUpload('user1', createFile())).resolves.toEqual({
-      invoice: {
-        id: 'invoice1',
-        userId: 'user1',
-        filename: 'receipt.txt',
-        filePath: 'uploads\\finance\\receipt.txt',
-        status: 'processed',
-        storeName: 'Highlands',
-        totalAmount: 25000,
-        purchasedAt: new Date('2026-06-11T09:30:00.000Z'),
-        extractedData: { vat: '10%' },
-      },
-      pendingExpense: {
-        invoiceId: 'invoice1',
-        merchantName: 'Highlands',
-        description: 'Highlands\nTotal: 25,000 VND',
-        amount: 25000,
-        spentAt: '2026-06-11T09:30:00.000Z',
-        sourceType: 'image',
-      },
-    });
-
-    expect(financeAiClient.extractInvoiceImage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        originalname: 'receipt.txt',
-        mimetype: 'text/plain',
-        buffer: expect.any(Buffer),
-      }),
+  it('processes an upload end-to-end and returns the pending expense', async () => {
+    const deps = createDeps();
+    deps.repository.createPending.mockResolvedValue(createInvoice());
+    deps.repository.applyExtraction.mockResolvedValue(
+      createInvoice({ status: 'processed', storeName: 'Quán A', totalAmount: 99000 }),
     );
-    expect(prisma.financeInvoice.create).toHaveBeenCalledWith({
-      data: {
-        userId: 'user1',
-        filename: 'receipt.txt',
-        filePath: expect.stringContaining('uploads'),
-        status: 'pending',
-      },
+    deps.financeAiClient.extractInvoiceImage.mockResolvedValue({
+      storeName: 'Quán A',
+      totalAmount: 99000,
+      purchasedAt: '2026-06-01T00:00:00.000Z',
+      rawText: 'hóa đơn 99k',
+      extractedData: { items: [] },
+      assistantMessage: 'Đã đọc hóa đơn',
     });
-    expect(prisma.financeInvoice.update).toHaveBeenCalledWith({
-      where: { id: 'invoice1' },
-      data: {
-        status: 'processed',
-        storeName: 'Highlands',
-        purchasedAt: new Date('2026-06-11T09:30:00.000Z'),
-        totalAmount: 25000,
-        extractedData: { vat: '10%' },
-      },
+    const service = createFinanceInvoicesService(deps);
+
+    const result = await service.processUpload('user1', createFile());
+
+    expect(deps.repository.createPending).toHaveBeenCalledWith('user1', {
+      filename: 'bill.png',
+      filePath: path.join(FINANCE_INVOICE_UPLOAD_ROOT, 'bill.png'),
     });
-  });
-
-  it('marks invoice as failed and returns no pending expense when AI OCR returns 502', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeInvoice.create.mockResolvedValue({
-      id: 'invoice2',
-      userId: 'user1',
-      filename: 'receipt.txt',
-      filePath: 'uploads\\finance\\receipt.txt',
-      status: 'pending',
+    expect(deps.repository.applyExtraction).toHaveBeenCalledWith('inv1', {
+      status: 'processed',
+      storeName: 'Quán A',
+      purchasedAt: new Date('2026-06-01T00:00:00.000Z'),
+      totalAmount: 99000,
+      extractedData: { items: [] },
     });
-    prisma.financeInvoice.update.mockResolvedValue({
-      id: 'invoice2',
-      userId: 'user1',
-      filename: 'receipt.txt',
-      filePath: 'uploads\\finance\\receipt.txt',
-      status: 'failed',
-    });
-
-    const financeAiClient = {
-      extractInvoiceImage: jest.fn().mockRejectedValue(badGateway('OCR unavailable')),
-    };
-
-    const service = createFinanceInvoicesService({ prisma, financeAiClient } as any);
-
-    await expect(service.processUpload('user1', createFile())).resolves.toEqual({
-      invoice: {
-        id: 'invoice2',
-        userId: 'user1',
-        filename: 'receipt.txt',
-        filePath: 'uploads\\finance\\receipt.txt',
-        status: 'failed',
-      },
-      pendingExpense: null,
-    });
-
-    expect(prisma.financeInvoice.update).toHaveBeenCalledWith({
-      where: { id: 'invoice2' },
-      data: { status: 'failed' },
+    expect(result.invoice).toMatchObject({ status: 'processed', totalAmount: 99000 });
+    expect(result.pendingExpense).toEqual({
+      invoiceId: 'inv1',
+      merchantName: 'Quán A',
+      description: 'hóa đơn 99k',
+      amount: 99000,
+      spentAt: '2026-06-01T00:00:00.000Z',
+      sourceType: 'image',
     });
   });
 
-  it('rethrows non-AI errors and does not mark invoice as failed', async () => {
-    const prisma = createPrismaMock();
-    prisma.financeInvoice.create.mockResolvedValue({
-      id: 'invoice3',
-      userId: 'user1',
-      filename: 'receipt.txt',
-      filePath: 'uploads\\finance\\receipt.txt',
-      status: 'pending',
+  it('returns a null pending expense when the AI finds no total amount', async () => {
+    const deps = createDeps();
+    deps.repository.createPending.mockResolvedValue(createInvoice());
+    deps.repository.applyExtraction.mockResolvedValue(createInvoice());
+    deps.financeAiClient.extractInvoiceImage.mockResolvedValue({
+      storeName: null,
+      totalAmount: null,
+      purchasedAt: null,
+      rawText: null,
+      extractedData: {},
+      assistantMessage: 'Không đọc được tổng tiền',
     });
+    const service = createFinanceInvoicesService(deps);
 
-    const unexpectedError = validationError('Invalid finance invoice upload path');
-    const financeAiClient = {
-      extractInvoiceImage: jest.fn().mockRejectedValue(unexpectedError),
-    };
+    const result = await service.processUpload('user1', createFile());
 
-    const service = createFinanceInvoicesService({ prisma, financeAiClient } as any);
+    expect(deps.repository.applyExtraction).toHaveBeenCalledWith('inv1', {
+      status: 'pending',
+      storeName: undefined,
+      purchasedAt: undefined,
+      totalAmount: undefined,
+      extractedData: {},
+    });
+    expect(result.pendingExpense).toBeNull();
+  });
 
-    await expect(service.processUpload('user1', createFile())).rejects.toBe(unexpectedError);
-    expect(prisma.financeInvoice.update).not.toHaveBeenCalled();
+  it('marks the invoice failed when the AI OCR gateway fails', async () => {
+    const deps = createDeps();
+    deps.repository.createPending.mockResolvedValue(createInvoice());
+    deps.repository.markFailed.mockResolvedValue(createInvoice({ status: 'failed' }));
+    deps.financeAiClient.extractInvoiceImage.mockRejectedValue(new HttpError(502, 'AI down'));
+    const service = createFinanceInvoicesService(deps);
+
+    const result = await service.processUpload('user1', createFile());
+
+    expect(deps.repository.markFailed).toHaveBeenCalledWith('inv1');
+    expect(result).toEqual({ invoice: expect.objectContaining({ status: 'failed' }), pendingExpense: null });
+  });
+
+  it('rethrows non-gateway AI errors', async () => {
+    const deps = createDeps();
+    deps.repository.createPending.mockResolvedValue(createInvoice());
+    deps.financeAiClient.extractInvoiceImage.mockRejectedValue(new Error('boom'));
+    const service = createFinanceInvoicesService(deps);
+
+    await expect(service.processUpload('user1', createFile())).rejects.toThrow('boom');
+    expect(deps.repository.markFailed).not.toHaveBeenCalled();
   });
 });

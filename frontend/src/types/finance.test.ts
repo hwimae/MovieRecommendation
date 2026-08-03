@@ -6,6 +6,7 @@ import {
   parseFinanceCategory,
   parseFinanceChatMessageResponse,
   parseFinanceChatStartResponse,
+  parseFinanceExpense,
   parseFinanceExpenses,
   parseFinanceGroupDetail,
   parseFinanceGroupMemberDashboard,
@@ -259,5 +260,19 @@ describe("finance parsers", () => {
     ).toMatchObject({
       savedExpense: { id: "expense1", amount: 25000 },
     });
+  });
+
+  it("parses numeric money fields from the normalized API", () => {
+    const expense = parseFinanceExpense({ id: "e1", amount: 125000 });
+    expect(expense.amount).toBe(125000);
+
+    const budget = parseFinanceBudget({
+      id: "b1",
+      categoryId: "c1",
+      limitAmount: 2000000,
+      period: "monthly",
+      alertThreshold: 0.8,
+    });
+    expect(budget.limitAmount).toBe(2000000);
   });
 });
