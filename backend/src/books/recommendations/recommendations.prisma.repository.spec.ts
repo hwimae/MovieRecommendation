@@ -91,4 +91,19 @@ describe('createPrismaRecommendationsRepository', () => {
     await expect(repository.searchStoryChunksByVector(embedding, 5)).resolves.toEqual(rows);
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
+
+  it('builds the vector search query with per-story ranking and freshness guards', async () => {
+    const prisma = createPrismaMock();
+    prisma.$queryRaw.mockResolvedValue([]);
+    const repository = createRepository(prisma);
+    const embedding = Array.from({ length: 384 }, () => 0.1);
+
+    await repository.searchStoryChunksByVector(embedding, 5);
+
+    const sql = (prisma.$queryRaw.mock.calls[0]?.[0] as unknown as TemplateStringsArray).join('?');
+    expect(sql).toContain('ROW_NUMBER() OVER');
+    expect(sql).toContain('PARTITION BY s.id');
+    expect(sql).toContain('"storyRank" = 1');
+    expect(sql).toContain('s."contentIndexedAt" >= s."contentUpdatedAt"');
+  });
 });

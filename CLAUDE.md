@@ -97,7 +97,8 @@ Hiện chỉ có tài liệu mô tả định hướng, chưa có lệnh runtime
   - `User`
   - `Story`
   - `Category`
-  - `Review` (unique theo cặp `userId + storyId` cho review user; review import dùng `externalCommentId`)
+  - `UserReview` (unique theo cặp `userId + storyId` cho review user; review import dùng `externalCommentId`)
+  - Nhóm model `Finance*` (11 models): `FinanceCategory`, `FinanceInvoice`, `FinanceExpense`, `FinanceBudget`, `FinanceGroup`, `FinanceGroupMember`, `FinanceChatSession`, `FinanceChatMessage`, `FinanceAIInteraction`, `FinanceCategorizationRule`, `FinanceCategorizationFeedback`
 - Migration history ở `backend/prisma/migrations/`.
 
 ### Frontend architecture (Next.js App Router)
