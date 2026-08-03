@@ -19,12 +19,6 @@ describe('summarizeExpenses', () => {
     ]);
   });
 
-  it('accepts decimal-like amounts during migration', () => {
-    const summary = summarizeExpenses([{ amount: { toString: () => '125000.50' }, category: null }]);
-
-    expect(summary.totalAmount).toBe(125000.5);
-  });
-
   it('returns an empty summary for no expenses', () => {
     expect(summarizeExpenses([])).toEqual({ totalAmount: 0, categories: [] });
   });

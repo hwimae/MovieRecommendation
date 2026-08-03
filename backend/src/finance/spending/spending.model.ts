@@ -1,5 +1,5 @@
 export type SpendingExpense = {
-  amount: number | { toString(): string };
+  amount: number;
   category: { id: string; name: string } | null;
 };
 
@@ -8,8 +8,8 @@ export type SpendingSummary = {
   categories: Array<{ categoryId: string | null; categoryName: string; amount: number }>;
 };
 
-function toCents(amount: SpendingExpense['amount']): number {
-  return Math.round(Number(amount.toString()) * 100);
+function toCents(amount: number): number {
+  return Math.round(amount * 100);
 }
 
 export function summarizeExpenses(expenses: SpendingExpense[]): SpendingSummary {
