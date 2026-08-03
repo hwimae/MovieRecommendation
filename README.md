@@ -27,17 +27,10 @@ Tài liệu lịch sử của AI Story Advisor v1 nằm ở:
 docs/AI_STORY_ADVISOR_V1.md
 ```
 
-Tài liệu Render-safe hiện tại cho stories flow nằm ở:
+Tài liệu setup, cách chạy và endpoint chi tiết của AI service nằm ở:
 
 ```text
-docs/AI_RECOMMENDATION_EMBEDDING_AND_PERSONALIZATION.md
-docs/RENDER_EMBEDDING_RUNBOOK.md
-```
-
-Tài liệu setup AI chi tiết nằm ở:
-
-```text
-docs/AI_STORY_ADVISOR_SETUP.md
+ai/README.md
 ```
 
 ## AI module layout
@@ -474,12 +467,12 @@ Kiểm tra tay:
 | `.\ai\.venv\Scripts\Activate.ps1` | Activate venv | Mỗi terminal chạy AI |
 | `pip install -r ai/requirements.txt` | Cài dependency Python | Lần đầu hoặc khi requirements đổi |
 | `uvicorn app.main:app --app-dir ai --host 127.0.0.1 --port 8000` | Chạy AI service | Mỗi lần dev cần AI |
-| `py -3.10 -m pytest ai/tests/test_main.py -q` | Chạy test AI | Sau khi sửa AI service |
+| `py -3.10 -m pytest -c ai/pytest.ini ai/tests -q` | Chạy test AI | Sau khi sửa AI service |
 
 ## Kiểm tra trước khi kết thúc thay đổi
 
 ```powershell
-py -3.10 -m pytest ai/tests/test_main.py -q
+py -3.10 -m pytest -c ai/pytest.ini ai/tests -q
 pnpm --dir backend test
 pnpm --dir backend typecheck
 pnpm --dir frontend test
