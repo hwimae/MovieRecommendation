@@ -3,11 +3,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/ui/form-field", () => ({
-  FormField: ({ label }: { label: string }) => React.createElement("div", null, label),
+  FormField: ({ label }: { label: string }) =>
+    React.createElement("div", null, label),
 }));
 
 vi.mock("@/components/ui/status-message", () => ({
-  StatusMessage: ({ children }: { children: React.ReactNode }) => React.createElement("div", null, children),
+  StatusMessage: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("div", null, children),
 }));
 
 vi.mock("@/lib/api", () => ({

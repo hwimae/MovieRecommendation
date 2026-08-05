@@ -35,7 +35,10 @@ export function DataTable<Row>({
   }
 
   return (
-    <div className={clsx("overflow-x-auto", className)} data-testid="data-table">
+    <div
+      className={clsx("overflow-x-auto", className)}
+      data-testid="data-table"
+    >
       <table className="w-full border-collapse text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead>

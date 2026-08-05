@@ -40,7 +40,9 @@ describe("CardSurface", () => {
   });
 
   it("giữ className do call site truyền vào", () => {
-    const html = renderToStaticMarkup(<CardSurface className="auth-card">Ruột</CardSurface>);
+    const html = renderToStaticMarkup(
+      <CardSurface className="auth-card">Ruột</CardSurface>,
+    );
 
     expect(html).toContain("auth-card");
   });
@@ -76,6 +78,14 @@ describe("CardSurface", () => {
     expect(html).toContain("<aside");
   });
 
+  it("render thành thẻ article", () => {
+    const html = renderToStaticMarkup(
+      <CardSurface as="article">Ruột</CardSurface>,
+    );
+
+    expect(html).toContain("<article");
+  });
+
   it("body mặc định có gap-4 khi không truyền bodyClassName", () => {
     const html = renderToStaticMarkup(<CardSurface>Ruột</CardSurface>);
 
@@ -83,7 +93,9 @@ describe("CardSurface", () => {
   });
 
   it("bodyClassName thay thế hoàn toàn gap mặc định", () => {
-    const html = renderToStaticMarkup(<CardSurface bodyClassName="gap-1">Ruột</CardSurface>);
+    const html = renderToStaticMarkup(
+      <CardSurface bodyClassName="gap-1">Ruột</CardSurface>,
+    );
 
     expect(html).toContain("gap-1");
     expect(html).not.toContain("gap-4");

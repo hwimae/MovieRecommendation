@@ -1,11 +1,9 @@
 "use client";
 
-import { Button, Radio, RadioGroup } from "@heroui/react";
 import React, { FormEvent, useId, useRef, useState } from "react";
 
-import { FormField } from "@/components/ui/form-field";
-import { CardSurface } from "./ui";
 import { StatusMessage } from "@/components/ui/status-message";
+import { Button, CardSurface, FormField } from "./ui";
 import { apiPost } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 
@@ -54,29 +52,32 @@ export function ReviewForm({ storyId }: ReviewFormProps) {
   }
 
   return (
-    <section aria-labelledby="review-title" className="section-stack review-form-surface">
+    <section
+      aria-labelledby="review-title"
+      className="section-stack review-form-surface"
+    >
       <CardSurface className="workspace-card">
         <div className="form-surface-heading">
           <p className="eyebrow">Đánh giá</p>
           <h2 id="review-title">Viết review truyện</h2>
-          <p className="result-summary">Chia sẻ cảm nhận để hệ thống hiểu gu đọc của bạn hơn.</p>
+          <p className="result-summary">
+            Chia sẻ cảm nhận để hệ thống hiểu gu đọc của bạn hơn.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="section-stack">
-          <RadioGroup
+          <FormField
+            kind="radio"
+            id="review-rating"
             label="Điểm đánh giá"
-            orientation="horizontal"
             value={String(rating)}
             onValueChange={(value) => setRating(Number(value))}
             isDisabled={isSubmitting}
-            color="primary"
-          >
-            {STAR_VALUES.map((star) => (
-              <Radio key={star} value={String(star)}>
-                {star} sao
-              </Radio>
-            ))}
-          </RadioGroup>
+            options={STAR_VALUES.map((star) => ({
+              value: String(star),
+              label: `${star} sao`,
+            }))}
+          />
 
           <FormField
             id={titleId}
@@ -100,13 +101,21 @@ export function ReviewForm({ storyId }: ReviewFormProps) {
             aria-describedby={(error ?? message) ? statusId : undefined}
           />
 
-          <Button color="primary" type="submit" isLoading={isSubmitting}>
+          <Button type="submit" isLoading={isSubmitting}>
             {isSubmitting ? "Đang gửi..." : "Gửi review"}
           </Button>
 
-          <div id={statusId} ref={statusRef} aria-live="assertive" aria-atomic="true" tabIndex={-1}>
+          <div
+            id={statusId}
+            ref={statusRef}
+            aria-live="assertive"
+            aria-atomic="true"
+            tabIndex={-1}
+          >
             {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
-            {!error && message ? <StatusMessage tone="success">{message}</StatusMessage> : null}
+            {!error && message ? (
+              <StatusMessage tone="success">{message}</StatusMessage>
+            ) : null}
           </div>
         </form>
       </CardSurface>

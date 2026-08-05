@@ -8,7 +8,12 @@ type Expense = { id: string; merchant: string; amount: string };
 
 const columns: DataTableColumn<Expense>[] = [
   { key: "merchant", header: "Nơi chi", render: (row) => row.merchant },
-  { key: "amount", header: "Số tiền", align: "right", render: (row) => row.amount },
+  {
+    key: "amount",
+    header: "Số tiền",
+    align: "right",
+    render: (row) => row.amount,
+  },
 ];
 
 const rows: Expense[] = [
@@ -19,7 +24,12 @@ const rows: Expense[] = [
 describe("DataTable", () => {
   it("render caption, header và mọi hàng", () => {
     const html = renderToStaticMarkup(
-      <DataTable columns={columns} rows={rows} getRowKey={(row) => row.id} caption="Lịch sử chi tiêu" />,
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        caption="Lịch sử chi tiêu"
+      />,
     );
 
     expect(html).toContain('data-testid="data-table"');
@@ -32,7 +42,12 @@ describe("DataTable", () => {
 
   it("gắn scope=col cho mọi header", () => {
     const html = renderToStaticMarkup(
-      <DataTable columns={columns} rows={rows} getRowKey={(row) => row.id} caption="Lịch sử chi tiêu" />,
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        caption="Lịch sử chi tiêu"
+      />,
     );
 
     expect(html.match(/scope="col"/g)).toHaveLength(2);
@@ -40,7 +55,12 @@ describe("DataTable", () => {
 
   it("căn phải và dùng tabular-nums cho cột align=right", () => {
     const html = renderToStaticMarkup(
-      <DataTable columns={columns} rows={rows} getRowKey={(row) => row.id} caption="Lịch sử chi tiêu" />,
+      <DataTable
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        caption="Lịch sử chi tiêu"
+      />,
     );
 
     expect(html).toContain("text-right");
@@ -64,7 +84,12 @@ describe("DataTable", () => {
 
   it("không render gì khi rỗng và không truyền emptyContent", () => {
     const html = renderToStaticMarkup(
-      <DataTable columns={columns} rows={[]} getRowKey={(row) => row.id} caption="Lịch sử chi tiêu" />,
+      <DataTable
+        columns={columns}
+        rows={[]}
+        getRowKey={(row) => row.id}
+        caption="Lịch sử chi tiêu"
+      />,
     );
 
     expect(html).toBe("");

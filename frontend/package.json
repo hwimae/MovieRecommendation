@@ -8,7 +8,7 @@
     "start": "next start",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --max-warnings=0 --ignore-pattern next-env.d.ts --ignore-pattern .next/**",
+    "lint": "eslint . --max-warnings=0",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {

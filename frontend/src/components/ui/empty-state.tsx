@@ -16,7 +16,13 @@ const TONE_CLASS: Record<EmptyStateTone, string> = {
   success: "bg-successSoft text-onSuccessSoft",
 };
 
-export function EmptyState({ title, description, action, tone = "info", className }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  description,
+  action,
+  tone = "info",
+  className,
+}: EmptyStateProps) {
   return (
     <div
       role={tone === "error" ? "alert" : "status"}

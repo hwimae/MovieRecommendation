@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@heroui/react";
 import React, { useState } from "react";
 
 import type { FinanceGroupSummary } from "../../types/finance";
+import { Button } from "../ui";
 import { StatusMessage } from "../ui/status-message";
 
 type FinanceGroupsPanelProps = {
@@ -14,7 +14,13 @@ type FinanceGroupsPanelProps = {
   onCreateGroup: (name: string) => Promise<boolean> | boolean;
 };
 
-export function FinanceGroupsPanel({ groups, selectedGroupId, isLoading, onSelectGroup, onCreateGroup }: FinanceGroupsPanelProps) {
+export function FinanceGroupsPanel({
+  groups,
+  selectedGroupId,
+  isLoading,
+  onSelectGroup,
+  onCreateGroup,
+}: FinanceGroupsPanelProps) {
   const [name, setName] = useState("");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -26,42 +32,69 @@ export function FinanceGroupsPanel({ groups, selectedGroupId, isLoading, onSelec
   }
 
   return (
-    <aside className="finance-groups-sidebar-column finance-groups-chooser section-stack" aria-label="Quản lý nhóm tài chính">
+    <aside
+      className="finance-groups-sidebar-column finance-groups-chooser section-stack"
+      aria-label="Quản lý nhóm tài chính"
+    >
       <section className="workspace-card section-stack finance-groups-create-card">
         <h2>Tạo nhóm mới</h2>
-        <p>Mời bạn bè hoặc người thân cùng theo dõi dashboard tài chính cá nhân trong một không gian chung.</p>
-        <form className="section-stack finance-groups-create-form" onSubmit={handleSubmit}>
+        <p>
+          Mời bạn bè hoặc người thân cùng theo dõi dashboard tài chính cá nhân
+          trong một không gian chung.
+        </p>
+        <form
+          className="section-stack finance-groups-create-form"
+          onSubmit={handleSubmit}
+        >
           <label className="form-field" htmlFor="finance-group-name">
             <span>Tên nhóm</span>
-            <input id="finance-group-name" value={name} onChange={(event) => setName(event.target.value)} />
+            <input
+              id="finance-group-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           </label>
-          <button type="submit">{groups.length === 0 ? "Tạo nhóm đầu tiên" : "Tạo nhóm"}</button>
+          <button type="submit">
+            {groups.length === 0 ? "Tạo nhóm đầu tiên" : "Tạo nhóm"}
+          </button>
         </form>
       </section>
 
-      <section className="workspace-card section-stack finance-groups-list-card finance-groups-selection-stack" aria-label="Danh sách nhóm">
+      <section
+        className="workspace-card section-stack finance-groups-list-card finance-groups-selection-stack"
+        aria-label="Danh sách nhóm"
+      >
         <div className="section-stack">
           <h2>Danh sách nhóm</h2>
           <p>Chọn nhóm để xem thành viên và mở dashboard của từng người.</p>
         </div>
-        {isLoading ? <StatusMessage>Đang tải danh sách nhóm tài chính...</StatusMessage> : null}
-        {!isLoading && groups.length === 0 ? <StatusMessage>Bạn chưa tham gia nhóm tài chính nào.</StatusMessage> : null}
+        {isLoading ? (
+          <StatusMessage>Đang tải danh sách nhóm tài chính...</StatusMessage>
+        ) : null}
+        {!isLoading && groups.length === 0 ? (
+          <StatusMessage>Bạn chưa tham gia nhóm tài chính nào.</StatusMessage>
+        ) : null}
         <div className="section-stack finance-group-list">
           {groups.map((group) => {
             const isActive = selectedGroupId === group.id;
-            const roleLabel = group.currentUserRole === "OWNER" ? "Chủ nhóm" : "Thành viên";
+            const roleLabel =
+              group.currentUserRole === "OWNER" ? "Chủ nhóm" : "Thành viên";
 
             return (
               <Button
                 key={group.id}
                 type="button"
-                variant="light"
+                variant="ghost"
                 className={`finance-group-list-item${isActive ? " finance-group-list-item-active" : ""}`}
                 aria-pressed={isActive}
                 onPress={() => onSelectGroup(group.id)}
               >
-                <span className="finance-group-list-item-title">{group.name}</span>
-                <span className="finance-group-list-item-meta">{roleLabel} · {group.memberCount} thành viên</span>
+                <span className="finance-group-list-item-title">
+                  {group.name}
+                </span>
+                <span className="finance-group-list-item-meta">
+                  {roleLabel} · {group.memberCount} thành viên
+                </span>
               </Button>
             );
           })}

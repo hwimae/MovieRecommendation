@@ -3,7 +3,13 @@ import React, { type ComponentProps } from "react";
 
 type HeroChipProps = ComponentProps<typeof HeroChip>;
 
-export type ChipTone = "neutral" | "primary" | "success" | "warning" | "danger" | "info";
+export type ChipTone =
+  | "neutral"
+  | "primary"
+  | "success"
+  | "warning"
+  | "danger"
+  | "info";
 
 export type ChipProps = Omit<HeroChipProps, "color" | "variant" | "radius"> & {
   tone?: ChipTone;

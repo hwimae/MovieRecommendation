@@ -6,14 +6,18 @@ import { EmptyState } from "./empty-state";
 
 describe("EmptyState", () => {
   it("render title và data-testid", () => {
-    const html = renderToStaticMarkup(<EmptyState title="Chưa có khoản chi nào." />);
+    const html = renderToStaticMarkup(
+      <EmptyState title="Chưa có khoản chi nào." />,
+    );
 
     expect(html).toContain('data-testid="empty-state"');
     expect(html).toContain("Chưa có khoản chi nào.");
   });
 
   it("dùng role=status cho tone info", () => {
-    const html = renderToStaticMarkup(<EmptyState title="Đang tải chi tiêu..." />);
+    const html = renderToStaticMarkup(
+      <EmptyState title="Đang tải chi tiêu..." />,
+    );
 
     expect(html).toContain('role="status"');
   });

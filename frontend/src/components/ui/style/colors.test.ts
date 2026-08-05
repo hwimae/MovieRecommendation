@@ -14,7 +14,11 @@ const TEXT_PAIRS: Array<[string, string, string]> = [
   ["text trên surfaceMuted", colors.text, colors.surfaceMuted],
   ["textMuted trên surface", colors.textMuted, colors.surface],
   ["textMuted trên background", colors.textMuted, colors.background],
-  ["textPlaceholder trên surfaceMuted", colors.textPlaceholder, colors.surfaceMuted],
+  [
+    "textPlaceholder trên surfaceMuted",
+    colors.textPlaceholder,
+    colors.surfaceMuted,
+  ],
   ["primary trên surface", colors.primary, colors.surface],
   ["primaryStrong trên surface", colors.primaryStrong, colors.surface],
   ["chữ trắng trên primary", "#ffffff", colors.primary],
@@ -40,13 +44,21 @@ const NON_TEXT_PAIRS: Array<[string, string, string]> = [
 ];
 
 describe("bảng màu dùng chung", () => {
-  it.each(TEXT_PAIRS)("%s đạt WCAG AA cho chữ thường", (_label, foreground, background) => {
-    expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(AA_TEXT);
-  });
+  it.each(TEXT_PAIRS)(
+    "%s đạt WCAG AA cho chữ thường",
+    (_label, foreground, background) => {
+      expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(
+        AA_TEXT,
+      );
+    },
+  );
 
-  it.each(NON_TEXT_PAIRS)("%s đạt WCAG 1.4.11 cho thành phần phi văn bản", (_label, a, b) => {
-    expect(contrastRatio(a, b)).toBeGreaterThanOrEqual(AA_NON_TEXT);
-  });
+  it.each(NON_TEXT_PAIRS)(
+    "%s đạt WCAG 1.4.11 cho thành phần phi văn bản",
+    (_label, a, b) => {
+      expect(contrastRatio(a, b)).toBeGreaterThanOrEqual(AA_NON_TEXT);
+    },
+  );
 
   it("mọi giá trị đều là mã hex 6 ký tự", () => {
     for (const [name, value] of Object.entries(colors)) {

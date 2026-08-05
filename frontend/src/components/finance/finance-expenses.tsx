@@ -2,10 +2,18 @@
 
 import React, { useEffect, useRef, useState } from "react";
 
-import { StatusMessage } from "../ui/status-message";
-import { createFinanceExpense, getFinanceCategories, listFinanceExpenses } from "../../lib/finance-api";
+import { EmptyState } from "../ui";
+import {
+  createFinanceExpense,
+  getFinanceCategories,
+  listFinanceExpenses,
+} from "../../lib/finance-api";
 import type { FinanceCategory, FinanceExpense } from "../../types/finance";
-import { FinanceExpensesContent, type FinanceExpenseDraft } from "./finance-expenses-content";
+import {
+  FinanceExpensesContent,
+  type FinanceExpenseDraft,
+  type FinanceSubmitMessage,
+} from "./finance-expenses-content";
 import { buildFinanceExpensePayload } from "./finance-expenses-helpers";
 import { buildFinanceExpenseHighlights } from "./finance-expenses-summary";
 import {
@@ -36,10 +44,16 @@ function isAbortError(error: unknown): boolean {
 export function FinanceExpenses() {
   const mountedRef = useRef(true);
   const submitAbortRef = useRef<AbortController | null>(null);
-  const [state, setState] = useState<ExpensesState>({ categories: [], expenses: [], isLoading: true, error: null });
+  const [state, setState] = useState<ExpensesState>({
+    categories: [],
+    expenses: [],
+    isLoading: true,
+    error: null,
+  });
   const [draft, setDraft] = useState<FinanceExpenseDraft>(EMPTY_DRAFT);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [submitMessage, setSubmitMessage] =
+    useState<FinanceSubmitMessage | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -61,12 +75,14 @@ export function FinanceExpenses() {
       setState({ categories, expenses, isLoading: false, error: null });
       return true;
     } catch (error) {
-      if (isAbortError(error) || !mountedRef.current || signal?.aborted) return false;
+      if (isAbortError(error) || !mountedRef.current || signal?.aborted)
+        return false;
       setState({
         categories: [],
         expenses: [],
         isLoading: false,
-        error: error instanceof Error ? error.message : "Không thể tải chi tiêu.",
+        error:
+          error instanceof Error ? error.message : "Không thể tải chi tiêu.",
       });
       return false;
     }
@@ -85,7 +101,10 @@ export function FinanceExpenses() {
     event.preventDefault();
     const payload = buildFinanceExpensePayload(draft);
     if (!payload) {
-      setSubmitMessage("Vui lòng nhập số tiền hợp lệ.");
+      setSubmitMessage({
+        tone: "error",
+        text: "Vui lòng nhập số tiền hợp lệ.",
+      });
       return;
     }
 
@@ -103,25 +122,47 @@ export function FinanceExpenses() {
       );
 
       if (!mountedRef.current || controller.signal.aborted) return;
-      setState((current) => ({ ...current, expenses: [created, ...current.expenses], error: null }));
+      setState((current) => ({
+        ...current,
+        expenses: [created, ...current.expenses],
+        error: null,
+      }));
       setDraft(EMPTY_DRAFT);
-      setSubmitMessage("Đã thêm khoản chi mới.");
+      setSubmitMessage({ tone: "success", text: "Đã thêm khoản chi mới." });
     } catch (error) {
-      if (!mountedRef.current || isAbortError(error) || controller.signal.aborted) return;
+      if (
+        !mountedRef.current ||
+        isAbortError(error) ||
+        controller.signal.aborted
+      )
+        return;
 
       if (isFinanceSubmitTimeoutError(error)) {
-        setSubmitMessage("Hệ thống đang chậm, đang tải lại dữ liệu chi tiêu...");
+        setSubmitMessage({
+          tone: "info",
+          text: "Hệ thống đang chậm, đang tải lại dữ liệu chi tiêu...",
+        });
         const didReload = await loadExpensesData();
         if (!mountedRef.current) return;
         setSubmitMessage(
           didReload
-            ? "Dữ liệu chi tiêu đã được tải lại. Vui lòng thử thêm lại nếu cần."
-            : "Không thể tải lại dữ liệu chi tiêu. Vui lòng thử lại sau.",
+            ? {
+                tone: "info",
+                text: "Dữ liệu chi tiêu đã được tải lại. Vui lòng thử thêm lại nếu cần.",
+              }
+            : {
+                tone: "error",
+                text: "Không thể tải lại dữ liệu chi tiêu. Vui lòng thử lại sau.",
+              },
         );
         return;
       }
 
-      setSubmitMessage(error instanceof Error ? error.message : "Không thể thêm khoản chi.");
+      setSubmitMessage({
+        tone: "error",
+        text:
+          error instanceof Error ? error.message : "Không thể thêm khoản chi.",
+      });
     } finally {
       if (submitAbortRef.current === controller) {
         submitAbortRef.current = null;
@@ -134,17 +175,20 @@ export function FinanceExpenses() {
 
   if (state.isLoading) {
     return (
-      <section className="section-stack finance-expenses-loading">
-        <StatusMessage>Đang tải chi tiêu...</StatusMessage>
+      <section className="flex flex-col gap-5">
+        <EmptyState title="Đang tải chi tiêu..." />
       </section>
     );
   }
 
-  const highlights = buildFinanceExpenseHighlights(state.categories, state.expenses);
+  const highlights = buildFinanceExpenseHighlights(
+    state.categories,
+    state.expenses,
+  );
 
   return (
     <section className="section-stack finance-expenses-page">
-      {state.error ? <StatusMessage tone="error">{state.error}</StatusMessage> : null}
+      {state.error ? <EmptyState tone="error" title={state.error} /> : null}
       <FinanceExpensesContent
         categories={state.categories}
         highlights={highlights}
@@ -152,7 +196,9 @@ export function FinanceExpenses() {
         isSubmitting={isSubmitting}
         submitMessage={submitMessage}
         onSubmit={handleSubmit}
-        onDraftChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+        onDraftChange={(patch) =>
+          setDraft((current) => ({ ...current, ...patch }))
+        }
       />
     </section>
   );

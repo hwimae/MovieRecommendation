@@ -1,12 +1,11 @@
 "use client";
 
-import { Button } from "@heroui/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { FormEvent, Suspense, useRef, useState } from "react";
 
 import { AUTH_REQUIRED_REDIRECT_REASON } from "@/components/auth/auth-routing";
+import { Button, CardSurface } from "@/components/ui";
 import { FormField } from "@/components/ui/form-field";
-import { CardSurface } from "@/components/ui";
 import { PageShell } from "@/components/ui/page-shell";
 import { StatusMessage } from "@/components/ui/status-message";
 import { ApiError, apiPost } from "@/lib/api";
@@ -31,7 +30,8 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirectReason = searchParams.get("redirectReason");
   const registeredPending = searchParams.get("registered") === "pending";
-  const shouldShowAuthRequiredNotice = redirectReason === AUTH_REQUIRED_REDIRECT_REASON;
+  const shouldShowAuthRequiredNotice =
+    redirectReason === AUTH_REQUIRED_REDIRECT_REASON;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -79,10 +79,14 @@ function LoginForm() {
 
           <div className="form-surface-stack">
             {registeredPending ? (
-              <StatusMessage tone="success">Đăng ký thành công. Vui lòng chờ admin duyệt tài khoản.</StatusMessage>
+              <StatusMessage tone="success">
+                Đăng ký thành công. Vui lòng chờ admin duyệt tài khoản.
+              </StatusMessage>
             ) : null}
 
-            {shouldShowAuthRequiredNotice ? <StatusMessage>Bạn cần đăng nhập để tiếp tục.</StatusMessage> : null}
+            {shouldShowAuthRequiredNotice ? (
+              <StatusMessage>Bạn cần đăng nhập để tiếp tục.</StatusMessage>
+            ) : null}
 
             <form onSubmit={handleSubmit} className="section-stack">
               <FormField
@@ -109,11 +113,19 @@ function LoginForm() {
                 onChange={(event) => setPassword(event.target.value)}
               />
 
-              <div id={errorRegionId} ref={errorRegionRef} aria-live="assertive" aria-atomic="true" tabIndex={-1}>
-                {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
+              <div
+                id={errorRegionId}
+                ref={errorRegionRef}
+                aria-live="assertive"
+                aria-atomic="true"
+                tabIndex={-1}
+              >
+                {error ? (
+                  <StatusMessage tone="error">{error}</StatusMessage>
+                ) : null}
               </div>
 
-              <Button color="primary" type="submit" isLoading={isSubmitting}>
+              <Button type="submit" isLoading={isSubmitting}>
                 {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
               </Button>
             </form>
@@ -128,7 +140,12 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <PageShell title="Đăng nhập" description="Đang chuẩn bị trang đăng nhập." eyebrow="Auth" variant="workspace">
+        <PageShell
+          title="Đăng nhập"
+          description="Đang chuẩn bị trang đăng nhập."
+          eyebrow="Auth"
+          variant="workspace"
+        >
           <StatusMessage>Đang tải trang đăng nhập...</StatusMessage>
         </PageShell>
       }

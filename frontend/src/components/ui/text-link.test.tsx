@@ -6,7 +6,9 @@ import { TextLink } from "./text-link";
 
 describe("TextLink", () => {
   it("render href, nhãn và data-testid", () => {
-    const html = renderToStaticMarkup(<TextLink href="/stories">Khu Truyện</TextLink>);
+    const html = renderToStaticMarkup(
+      <TextLink href="/stories">Khu Truyện</TextLink>,
+    );
 
     expect(html).toContain('data-testid="text-link"');
     expect(html).toContain('href="/stories"');

@@ -1,7 +1,8 @@
 "use client";
 
-import { Button } from "@heroui/react";
 import React from "react";
+
+import { Button } from "../ui";
 
 type AdvisorQuickPromptsProps = {
   prompts: readonly string[];
@@ -30,7 +31,7 @@ export function AdvisorQuickPrompts({
           <Button
             key={prompt}
             type="button"
-            variant="flat"
+            variant="ghost"
             className="story-advisor-quick-prompt"
             onPress={() => onSelectPrompt(prompt)}
             isDisabled={disabled}

@@ -1,11 +1,11 @@
 "use client";
 
 import React from "react";
-import { Button } from "@heroui/react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { Button } from "./ui";
 import { FormField } from "./ui/form-field";
 
 type StoryListControlsProps = {
@@ -38,7 +38,10 @@ export function buildStoryListQueryHref(
   return next ? `${pathname}?${next}` : pathname;
 }
 
-export function StoryListControls({ query, hasContent }: StoryListControlsProps) {
+export function StoryListControls({
+  query,
+  hasContent,
+}: StoryListControlsProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -50,10 +53,14 @@ export function StoryListControls({ query, hasContent }: StoryListControlsProps)
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      const nextUrl = buildStoryListQueryHref(pathname, searchParams.toString(), {
-        query: search,
-        hasContent,
-      });
+      const nextUrl = buildStoryListQueryHref(
+        pathname,
+        searchParams.toString(),
+        {
+          query: search,
+          hasContent,
+        },
+      );
       const current = searchParams.toString();
       const currentUrl = current ? `${pathname}?${current}` : pathname;
 
@@ -80,8 +87,7 @@ export function StoryListControls({ query, hasContent }: StoryListControlsProps)
           query: search,
           hasContent: !hasContent,
         })}
-        color="primary"
-        variant={hasContent ? "solid" : "flat"}
+        variant={hasContent ? "primary" : "ghost"}
       >
         {hasContent ? "Đang lọc truyện có nội dung" : "Chỉ hiện có nội dung"}
       </Button>

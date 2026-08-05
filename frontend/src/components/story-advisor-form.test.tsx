@@ -61,7 +61,8 @@ describe("StoryAdvisorForm", () => {
     expect(html).toContain("Trình duyệt sẽ tạo vector");
     expect(html).toContain("Gợi ý nhanh");
     expect(html).toContain("story-advisor-field");
-    expect(html).toContain("story-advisor-textarea-label");
+    expect(html).toContain('data-testid="form-field"');
+    expect(html).toContain('data-kind="textarea"');
     expect(html).not.toContain("StoryRec AI");
   });
 });

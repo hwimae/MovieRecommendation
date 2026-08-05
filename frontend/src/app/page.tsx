@@ -1,4 +1,3 @@
-import { Card, CardBody, CardHeader, Link } from "@heroui/react";
 import {
   ArrowRight,
   BookOpenText,
@@ -11,7 +10,14 @@ import {
 } from "lucide-react";
 import NextLink from "next/link";
 
-const WORKSPACE_ITEMS: Array<{ label: string; value: string; icon: LucideIcon; tone: "stories" | "finance" | "movie" }> = [
+import { CardSurface, TextLink } from "@/components/ui";
+
+const WORKSPACE_ITEMS: Array<{
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  tone: "stories" | "finance" | "movie";
+}> = [
   {
     label: "Truyện mới cập nhật",
     value: "0",
@@ -32,11 +38,19 @@ const WORKSPACE_ITEMS: Array<{ label: string; value: string; icon: LucideIcon; t
   },
 ];
 
-const MODULES: Array<{ href: string; title: string; description: string; cta: string; icon: LucideIcon; tone: "stories" | "finance" | "movie" }> = [
+const MODULES: Array<{
+  href: string;
+  title: string;
+  description: string;
+  cta: string;
+  icon: LucideIcon;
+  tone: "stories" | "finance" | "movie";
+}> = [
   {
     href: "/stories",
     title: "Truyện",
-    description: "Không gian sáng tác, dịch thuật và quản lý kho tàng truyện của bạn với các công cụ hỗ trợ đọc và lưu trữ.",
+    description:
+      "Không gian sáng tác, dịch thuật và quản lý kho tàng truyện của bạn với các công cụ hỗ trợ đọc và lưu trữ.",
     cta: "Khám phá ngay",
     icon: BookOpenText,
     tone: "stories",
@@ -44,7 +58,8 @@ const MODULES: Array<{ href: string; title: string; description: string; cta: st
   {
     href: "/finance/dashboard",
     title: "Tài chính",
-    description: "Kiểm soát dòng tiền, quản lý ngân sách nhóm và cá nhân minh bạch, an toàn và dễ theo dõi.",
+    description:
+      "Kiểm soát dòng tiền, quản lý ngân sách nhóm và cá nhân minh bạch, an toàn và dễ theo dõi.",
     cta: "Quản lý ngay",
     icon: WalletCards,
     tone: "finance",
@@ -52,7 +67,8 @@ const MODULES: Array<{ href: string; title: string; description: string; cta: st
   {
     href: "/movie",
     title: "Phim",
-    description: "Lưu trữ, đánh giá và chia sẻ danh sách những bộ phim yêu thích trong cùng hệ giao diện Hwimae.",
+    description:
+      "Lưu trữ, đánh giá và chia sẻ danh sách những bộ phim yêu thích trong cùng hệ giao diện Hwimae.",
     cta: "Xem danh sách",
     icon: Clapperboard,
     tone: "movie",
@@ -69,53 +85,73 @@ export default function HomePage() {
               Không gian kể chuyện &amp; quản lý tài chính thông minh.
             </h1>
             <p className="home-hero-description">
-              Tổ chức công việc sáng tạo, theo dõi chi tiêu và khám phá nội dung giải trí trong một không gian duy nhất, tĩnh lặng và tập trung.
+              Tổ chức công việc sáng tạo, theo dõi chi tiêu và khám phá nội dung
+              giải trí trong một không gian duy nhất, tĩnh lặng và tập trung.
             </p>
           </div>
 
           <div className="home-action-row">
-            <NextLink href="/stories" className="home-action home-action-primary">
+            <NextLink
+              href="/stories"
+              className="home-action home-action-primary"
+            >
               <Compass size={18} />
               <span>Khám phá truyện</span>
             </NextLink>
-            <NextLink href="/finance/dashboard" className="home-action home-action-secondary">
+            <NextLink
+              href="/finance/dashboard"
+              className="home-action home-action-secondary"
+            >
               <WalletCards size={18} />
               <span>Quản lý tài chính</span>
             </NextLink>
           </div>
         </div>
 
-        <Card className="home-workspace-card" shadow="sm">
-          <CardHeader className="home-workspace-header">
-            <div className="home-workspace-title-wrap">
-              <div className="home-workspace-title-icon">
+        <CardSurface
+          className="home-workspace-card"
+          title={
+            <>
+              <span className="home-workspace-title-icon">
                 <BookOpenText size={18} />
-              </div>
-              <h2>Workspace hôm nay</h2>
-            </div>
-            <span className="home-workspace-caption">Bản xem trước</span>
-          </CardHeader>
-          <CardBody className="section-stack home-workspace-body">
-            <ul className="home-workspace-list" role="list">
-              {WORKSPACE_ITEMS.map(({ label, value, icon: Icon, tone }) => (
-                <li key={label} className={`home-workspace-item home-workspace-item-${tone}`}>
-                  <div className="home-workspace-item-copy">
-                    <span className={`home-workspace-item-icon home-workspace-item-icon-${tone}`}>
-                      <Icon size={18} />
-                    </span>
-                    <span className="home-workspace-item-label">{label}</span>
-                  </div>
-                  <strong className="home-workspace-item-value">{value}</strong>
-                </li>
-              ))}
-            </ul>
-          </CardBody>
-        </Card>
+              </span>
+              Workspace hôm nay
+            </>
+          }
+          action={<span className="home-workspace-caption">Bản xem trước</span>}
+        >
+          <ul className="home-workspace-list" role="list">
+            {WORKSPACE_ITEMS.map(({ label, value, icon: Icon, tone }) => (
+              <li
+                key={label}
+                className={`home-workspace-item home-workspace-item-${tone}`}
+              >
+                <div className="home-workspace-item-copy">
+                  <span
+                    className={`home-workspace-item-icon home-workspace-item-icon-${tone}`}
+                  >
+                    <Icon size={18} />
+                  </span>
+                  <span className="home-workspace-item-label">{label}</span>
+                </div>
+                <strong className="home-workspace-item-value">{value}</strong>
+              </li>
+            ))}
+          </ul>
+        </CardSurface>
       </section>
 
-      <section className="home-module-grid" aria-label="Các module chính của Hwimae">
+      <section
+        className="home-module-grid"
+        aria-label="Các module chính của Hwimae"
+      >
         {MODULES.map(({ href, title, description, cta, icon: Icon, tone }) => (
-          <Link key={href} as={NextLink} href={href} className={`home-module-card home-module-card-${tone}`}>
+          <TextLink
+            key={href}
+            as={NextLink}
+            href={href}
+            className={`home-module-card home-module-card-${tone}`}
+          >
             <span className={`home-module-icon home-module-icon-${tone}`}>
               <Icon size={30} strokeWidth={2.1} />
             </span>
@@ -125,22 +161,22 @@ export default function HomePage() {
               {cta}
               <ArrowRight size={16} />
             </span>
-          </Link>
+          </TextLink>
         ))}
       </section>
 
       <footer className="home-footer">
         <p>© 2024 Hwimae. Không gian kể chuyện sáng tạo.</p>
         <div className="home-footer-links">
-          <Link as={NextLink} href="/stories">
+          <TextLink as={NextLink} href="/stories">
             Truyện
-          </Link>
-          <Link as={NextLink} href="/finance/dashboard">
+          </TextLink>
+          <TextLink as={NextLink} href="/finance/dashboard">
             Tài chính
-          </Link>
-          <Link as={NextLink} href="/recommendations">
+          </TextLink>
+          <TextLink as={NextLink} href="/recommendations">
             AI tư vấn
-          </Link>
+          </TextLink>
         </div>
       </footer>
     </main>

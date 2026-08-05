@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
  * class bespoke vào đây. Khi migrate xong một màn thì hạ con số này xuống.
  * KHÔNG BAO GIỜ nâng con số này lên.
  */
-const MAX_LINES = 3276;
+const MAX_LINES = 2914;
 
 describe("globals.css", () => {
   it(`không dài quá ${MAX_LINES} dòng`, () => {

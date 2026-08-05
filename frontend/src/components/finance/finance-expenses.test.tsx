@@ -9,6 +9,6 @@ describe("FinanceExpenses", () => {
     const html = renderToStaticMarkup(<FinanceExpenses />);
 
     expect(html).toContain("Đang tải chi tiêu...");
-    expect(html).toContain("finance-expenses-loading");
+    expect(html).toContain('data-testid="empty-state"');
   });
 });

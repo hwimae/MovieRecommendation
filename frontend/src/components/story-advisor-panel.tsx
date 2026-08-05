@@ -6,7 +6,8 @@ import React from "react";
 import { CardSurface } from "./ui";
 
 const StoryAdvisorForm = dynamic(
-  () => import("./story-advisor-form").then((module) => module.StoryAdvisorForm),
+  () =>
+    import("./story-advisor-form").then((module) => module.StoryAdvisorForm),
   {
     ssr: false,
     loading: () => <StoryAdvisorLoadingState />,

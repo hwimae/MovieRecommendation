@@ -1,6 +1,5 @@
 "use client";
 
-import { Button, Textarea } from "@heroui/react";
 import { Wand2 } from "lucide-react";
 import React, { FormEvent, useState } from "react";
 
@@ -10,7 +9,7 @@ import type { StoryAdvisorResponse } from "../types/recommendation";
 import { AdvisorQuickPrompts } from "./stories/advisor-quick-prompts";
 import { AdvisorSummaryCard } from "./stories/advisor-summary-card";
 import { RecommendationStoryCard } from "./stories/recommendation-story-card";
-import { CardSurface } from "./ui";
+import { Button, CardSurface, FormField } from "./ui";
 import { StatusMessage } from "./ui/status-message";
 
 const EXAMPLE_QUERY =
@@ -66,7 +65,10 @@ export function StoryAdvisorForm() {
     setError(null);
 
     try {
-      const response = await requestStoryAdvisorRecommendations(trimmedQuery, 5);
+      const response = await requestStoryAdvisorRecommendations(
+        trimmedQuery,
+        5,
+      );
       setResult(response);
     } catch (error) {
       setError(resolveStoryAdvisorErrorMessage(error));
@@ -82,12 +84,14 @@ export function StoryAdvisorForm() {
         <div className="form-surface-heading">
           <h2>Tìm truyện cùng AI</h2>
           <p className="result-summary">
-            Trình duyệt sẽ tạo vector từ gu đọc của bạn rồi gửi sang backend để tìm truyện gần nghĩa nhất.
+            Trình duyệt sẽ tạo vector từ gu đọc của bạn rồi gửi sang backend để
+            tìm truyện gần nghĩa nhất.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="form-surface-stack">
-          <Textarea
+          <FormField
+            kind="textarea"
             id="advisor-query"
             aria-label="Gu truyện của bạn"
             label="Gu truyện của bạn"
@@ -95,15 +99,8 @@ export function StoryAdvisorForm() {
             onChange={(event) => setQuery(event.target.value)}
             minRows={5}
             maxLength={MAX_ADVISOR_QUERY_LENGTH}
-            variant="bordered"
-            color="primary"
             placeholder="Ví dụ: Mình thích thể loại tu tiên, main lạnh lùng sát phạt quyết đoán, bối cảnh hoành tráng, không hậu cung."
             className="story-advisor-field"
-            classNames={{
-              inputWrapper: "story-advisor-textarea-wrapper",
-              input: "story-advisor-textarea-input",
-              label: "story-advisor-textarea-label",
-            }}
           />
 
           <div className="story-advisor-action-row">
@@ -115,12 +112,13 @@ export function StoryAdvisorForm() {
               </span>
             </div>
             <Button
-              color="primary"
               type="submit"
               isLoading={isLoading}
               className="story-advisor-submit-button"
             >
-              {isLoading ? "Đang tạo vector và tìm truyện…" : "Tạo vector và tìm truyện"}
+              {isLoading
+                ? "Đang tạo vector và tìm truyện…"
+                : "Tạo vector và tìm truyện"}
             </Button>
           </div>
         </form>

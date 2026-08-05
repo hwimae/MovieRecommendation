@@ -17,7 +17,12 @@ const MODULE_LINKS = [
   { href: "/movie", label: "Phim" },
 ] as const;
 
-const STORY_PATH_PREFIXES = ["/stories", "/recommendations", "/login", "/register"];
+const STORY_PATH_PREFIXES = [
+  "/stories",
+  "/recommendations",
+  "/login",
+  "/register",
+];
 
 function isModuleActive(pathname: string, href: string): boolean {
   if (href === "/") {
@@ -29,7 +34,9 @@ function isModuleActive(pathname: string, href: string): boolean {
   }
 
   if (href === "/stories") {
-    return STORY_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+    return STORY_PATH_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -48,7 +55,12 @@ export function GlobalHeader() {
     <header className="global-header">
       <div className="global-header-shell">
         <div className="global-header-topbar">
-          <TextLink as={NextLink} href="/" tone="muted" className="global-header-brand">
+          <TextLink
+            as={NextLink}
+            href="/"
+            tone="muted"
+            className="global-header-brand"
+          >
             <span className="global-header-brand-mark">Hwimae</span>
           </TextLink>
 
@@ -58,7 +70,9 @@ export function GlobalHeader() {
                 <>
                   <div className="global-header-account">
                     <CircleUserRound size={16} />
-                    <span className="global-header-account-name">{user.name}</span>
+                    <span className="global-header-account-name">
+                      {user.name}
+                    </span>
                   </div>
                   <Button
                     variant="ghost"
@@ -91,7 +105,10 @@ export function GlobalHeader() {
           </div>
         </div>
 
-        <nav className="global-header-menu global-header-module-rail" aria-label="Điều hướng chính">
+        <nav
+          className="global-header-menu global-header-module-rail"
+          aria-label="Điều hướng chính"
+        >
           {links.map((item) => {
             const isActive = isModuleActive(pathname, item.href);
 

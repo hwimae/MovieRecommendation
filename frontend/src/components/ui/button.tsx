@@ -6,12 +6,18 @@ type HeroButtonProps = ComponentProps<typeof HeroButton>;
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
-export type ButtonProps = Omit<HeroButtonProps, "color" | "variant" | "radius" | "size"> & {
+export type ButtonProps = Omit<
+  HeroButtonProps,
+  "color" | "variant" | "radius" | "size"
+> & {
   variant?: ButtonVariant;
   size?: "sm" | "md";
 };
 
-const VARIANT_PROPS: Record<ButtonVariant, Pick<HeroButtonProps, "color" | "variant">> = {
+const VARIANT_PROPS: Record<
+  ButtonVariant,
+  Pick<HeroButtonProps, "color" | "variant">
+> = {
   primary: { color: "primary", variant: "solid" },
   secondary: { color: "default", variant: "bordered" },
   ghost: { color: "primary", variant: "light" },

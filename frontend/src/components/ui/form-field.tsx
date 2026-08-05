@@ -1,4 +1,11 @@
-import { Input, Radio, RadioGroup, Select, SelectItem, Textarea } from "@heroui/react";
+import {
+  Input,
+  Radio,
+  RadioGroup,
+  Select,
+  SelectItem,
+  Textarea,
+} from "@heroui/react";
 import React, { type ComponentProps, type ReactNode } from "react";
 
 export type FormFieldOption = {
@@ -18,12 +25,18 @@ type HeroInputProps = ComponentProps<typeof Input>;
 type HeroTextareaProps = ComponentProps<typeof Textarea>;
 
 type InputFieldProps = SharedProps &
-  Omit<HeroInputProps, "id" | "label" | "description" | "errorMessage" | "isInvalid"> & {
+  Omit<
+    HeroInputProps,
+    "id" | "label" | "description" | "errorMessage" | "isInvalid"
+  > & {
     kind?: "input";
   };
 
 type TextareaFieldProps = SharedProps &
-  Omit<HeroTextareaProps, "id" | "label" | "description" | "errorMessage" | "isInvalid"> & {
+  Omit<
+    HeroTextareaProps,
+    "id" | "label" | "description" | "errorMessage" | "isInvalid"
+  > & {
     kind: "textarea";
   };
 
@@ -41,6 +54,7 @@ type RadioFieldProps = SharedProps & {
   onValueChange: (value: string) => void;
   options: FormFieldOption[];
   orientation?: "horizontal" | "vertical";
+  isDisabled?: boolean;
 };
 
 export type FormFieldProps =
@@ -50,23 +64,48 @@ export type FormFieldProps =
   | RadioFieldProps;
 
 /** Vùng chú thích dưới control: ưu tiên error, không có error thì hiện hint. */
-function FieldFooter({ id, hint, error }: { id: string; hint?: string; error?: string }): ReactNode {
+function FieldFooter({
+  id,
+  hint,
+  error,
+}: {
+  id: string;
+  hint?: string;
+  error?: string;
+}): ReactNode {
   if (error) {
     return (
-      <p id={`${id}-error`} role="alert" className="mt-1.5 text-sm text-onDangerSoft">
+      <p
+        id={`${id}-error`}
+        role="alert"
+        className="mt-1.5 text-sm text-onDangerSoft"
+      >
         {error}
       </p>
     );
   }
   if (hint) {
-    return <p className="mt-1.5 text-sm text-textMuted">{hint}</p>;
+    return (
+      <p id={`${id}-hint`} className="mt-1.5 text-sm text-textMuted">
+        {hint}
+      </p>
+    );
   }
   return null;
 }
 
 export function FormField(props: FormFieldProps) {
   const { id, label, hint, error, required } = props;
-  const describedBy = error ? `${id}-error` : undefined;
+  const callerDescribedBy =
+    "aria-describedby" in props ? props["aria-describedby"] : undefined;
+  const mergedDescribedBy =
+    [
+      error ? `${id}-error` : null,
+      !error && hint ? `${id}-hint` : null,
+      callerDescribedBy,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   const wrapperProps = {
     "data-testid": "form-field",
@@ -90,7 +129,7 @@ export function FormField(props: FormFieldProps) {
           placeholder={placeholder}
           isRequired={required}
           isInvalid={Boolean(error)}
-          aria-describedby={describedBy}
+          aria-describedby={mergedDescribedBy}
           selectedKeys={value ? [value] : []}
           onSelectionChange={(keys) => {
             const [first] = Array.from(keys as Set<string>);
@@ -107,7 +146,13 @@ export function FormField(props: FormFieldProps) {
   }
 
   if (props.kind === "radio") {
-    const { value, onValueChange, options, orientation = "horizontal" } = props;
+    const {
+      value,
+      onValueChange,
+      options,
+      orientation = "horizontal",
+      isDisabled,
+    } = props;
 
     return (
       <div {...wrapperProps}>
@@ -116,9 +161,10 @@ export function FormField(props: FormFieldProps) {
           orientation={orientation}
           isRequired={required}
           isInvalid={Boolean(error)}
-          aria-describedby={describedBy}
+          aria-describedby={mergedDescribedBy}
           value={value}
           onValueChange={onValueChange}
+          isDisabled={isDisabled}
         >
           {options.map((option) => (
             <Radio key={option.value} value={option.value}>
@@ -132,7 +178,16 @@ export function FormField(props: FormFieldProps) {
   }
 
   if (props.kind === "textarea") {
-    const { kind: _kind, id: _id, label: _label, hint: _hint, error: _error, required: _required, ...fieldProps } = props;
+    const {
+      kind: _kind,
+      id: _id,
+      label: _label,
+      hint: _hint,
+      error: _error,
+      required: _required,
+      "aria-describedby": _ariaDescribedBy,
+      ...fieldProps
+    } = props;
 
     return (
       <div {...wrapperProps}>
@@ -143,14 +198,23 @@ export function FormField(props: FormFieldProps) {
           variant="bordered"
           isRequired={required}
           isInvalid={Boolean(error)}
-          aria-describedby={describedBy}
+          aria-describedby={mergedDescribedBy}
         />
         <FieldFooter id={id} hint={hint} error={error} />
       </div>
     );
   }
 
-  const { kind: _kind, id: _id, label: _label, hint: _hint, error: _error, required: _required, ...fieldProps } = props;
+  const {
+    kind: _kind,
+    id: _id,
+    label: _label,
+    hint: _hint,
+    error: _error,
+    required: _required,
+    "aria-describedby": _ariaDescribedBy,
+    ...fieldProps
+  } = props;
 
   return (
     <div {...wrapperProps}>
@@ -161,7 +225,7 @@ export function FormField(props: FormFieldProps) {
         variant="bordered"
         isRequired={required}
         isInvalid={Boolean(error)}
-        aria-describedby={describedBy}
+        aria-describedby={mergedDescribedBy}
       />
       <FieldFooter id={id} hint={hint} error={error} />
     </div>

@@ -1,11 +1,10 @@
 "use client";
 
-import { Button } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import React, { FormEvent, useRef, useState } from "react";
 
+import { Button, CardSurface } from "@/components/ui";
 import { FormField } from "@/components/ui/form-field";
-import { CardSurface } from "@/components/ui";
 import { PageShell } from "@/components/ui/page-shell";
 import { StatusMessage } from "@/components/ui/status-message";
 import { apiPost } from "@/lib/api";
@@ -95,11 +94,19 @@ export default function RegisterPage() {
               onChange={(event) => setPassword(event.target.value)}
             />
 
-            <div id={errorRegionId} ref={errorRegionRef} aria-live="assertive" aria-atomic="true" tabIndex={-1}>
-              {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
+            <div
+              id={errorRegionId}
+              ref={errorRegionRef}
+              aria-live="assertive"
+              aria-atomic="true"
+              tabIndex={-1}
+            >
+              {error ? (
+                <StatusMessage tone="error">{error}</StatusMessage>
+              ) : null}
             </div>
 
-            <Button color="primary" type="submit" isLoading={isSubmitting}>
+            <Button type="submit" isLoading={isSubmitting}>
               {isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
             </Button>
           </form>

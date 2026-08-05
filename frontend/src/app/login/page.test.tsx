@@ -14,20 +14,25 @@ vi.mock("@/components/auth/auth-routing", () => ({
 }));
 
 vi.mock("@/components/ui/form-field", () => ({
-  FormField: ({ label }: { label: string }) => React.createElement("div", null, label),
+  FormField: ({ label }: { label: string }) =>
+    React.createElement("div", null, label),
 }));
 
 vi.mock("@/components/ui", () => ({
   CardSurface: ({ children }: { children: React.ReactNode }) =>
     React.createElement("div", { "data-testid": "card-surface" }, children),
+  Button: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("button", null, children),
 }));
 
 vi.mock("@/components/ui/page-shell", () => ({
-  PageShell: ({ children }: { children: React.ReactNode }) => React.createElement("main", null, children),
+  PageShell: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("main", null, children),
 }));
 
 vi.mock("@/components/ui/status-message", () => ({
-  StatusMessage: ({ children }: { children: React.ReactNode }) => React.createElement("div", null, children),
+  StatusMessage: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("div", null, children),
 }));
 
 vi.mock("@/lib/api", () => ({

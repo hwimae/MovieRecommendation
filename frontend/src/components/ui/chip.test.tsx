@@ -19,7 +19,14 @@ describe("Chip", () => {
   });
 
   it("phơi tone ra data-tone cho từng tone", () => {
-    for (const tone of ["neutral", "primary", "success", "warning", "danger", "info"] as const) {
+    for (const tone of [
+      "neutral",
+      "primary",
+      "success",
+      "warning",
+      "danger",
+      "info",
+    ] as const) {
       const html = renderToStaticMarkup(<Chip tone={tone}>Nhãn</Chip>);
 
       expect(html).toContain(`data-tone="${tone}"`);

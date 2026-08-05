@@ -13,7 +13,11 @@ const items = [
 describe("SegmentedFilter", () => {
   it("render mọi item và data-testid", () => {
     const html = renderToStaticMarkup(
-      <SegmentedFilter items={items} activeKey="all" ariaLabel="Bộ lọc lịch sử chi tiêu" />,
+      <SegmentedFilter
+        items={items}
+        activeKey="all"
+        ariaLabel="Bộ lọc lịch sử chi tiêu"
+      />,
     );
 
     expect(html).toContain('data-testid="segmented-filter"');
@@ -24,7 +28,11 @@ describe("SegmentedFilter", () => {
 
   it("gắn aria-current cho đúng một item đang chọn", () => {
     const html = renderToStaticMarkup(
-      <SegmentedFilter items={items} activeKey="week" ariaLabel="Bộ lọc lịch sử chi tiêu" />,
+      <SegmentedFilter
+        items={items}
+        activeKey="week"
+        ariaLabel="Bộ lọc lịch sử chi tiêu"
+      />,
     );
 
     expect(html.match(/aria-current="true"/g)).toHaveLength(1);
@@ -32,7 +40,11 @@ describe("SegmentedFilter", () => {
 
   it("gắn aria-label cho nhóm", () => {
     const html = renderToStaticMarkup(
-      <SegmentedFilter items={items} activeKey="all" ariaLabel="Bộ lọc lịch sử chi tiêu" />,
+      <SegmentedFilter
+        items={items}
+        activeKey="all"
+        ariaLabel="Bộ lọc lịch sử chi tiêu"
+      />,
     );
 
     expect(html).toContain('aria-label="Bộ lọc lịch sử chi tiêu"');

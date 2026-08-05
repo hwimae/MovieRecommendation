@@ -1,6 +1,6 @@
-import { Button, Chip } from "@heroui/react";
 import NextLink from "next/link";
 
+import { Button, Chip } from "@/components/ui";
 import { PageShell } from "@/components/ui/page-shell";
 import { PageState } from "@/components/ui/page-state";
 
@@ -12,16 +12,18 @@ export default function MoviePage() {
       eyebrow="Coming soon"
       variant="workspace"
     >
-      <section className="page-state page-state-info section-stack" aria-label="Trạng thái module phim">
-        <Chip color="warning" variant="flat">
-          Đang hoàn thiện
-        </Chip>
+      <section
+        className="page-state page-state-info section-stack"
+        aria-label="Trạng thái module phim"
+      >
+        <Chip tone="warning">Đang hoàn thiện</Chip>
         <h2>Không gian phim sẽ là module tiếp theo</h2>
         <p className="result-summary">
-          Hiện tại bạn có thể quay về trang chủ hoặc mở khu Truyện/Tài chính để tiếp tục dùng app.
+          Hiện tại bạn có thể quay về trang chủ hoặc mở khu Truyện/Tài chính để
+          tiếp tục dùng app.
         </p>
         <div className="form-actions">
-          <Button as={NextLink} href="/" color="primary">
+          <Button as={NextLink} href="/">
             Về trang chủ
           </Button>
         </div>

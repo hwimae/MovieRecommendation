@@ -19,7 +19,9 @@ describe("Button", () => {
   });
 
   it("giữ nguyên nhãn và đặt aria-busy khi đang loading", () => {
-    const html = renderToStaticMarkup(<Button isLoading>Thêm khoản chi</Button>);
+    const html = renderToStaticMarkup(
+      <Button isLoading>Thêm khoản chi</Button>,
+    );
 
     expect(html).toContain('aria-busy="true"');
     expect(html).toContain("Thêm khoản chi");
@@ -32,7 +34,12 @@ describe("Button", () => {
   });
 
   it("phơi variant ra data-variant cho từng biến thể", () => {
-    for (const variant of ["primary", "secondary", "ghost", "danger"] as const) {
+    for (const variant of [
+      "primary",
+      "secondary",
+      "ghost",
+      "danger",
+    ] as const) {
       const html = renderToStaticMarkup(<Button variant={variant}>Nút</Button>);
 
       expect(html).toContain(`data-variant="${variant}"`);
@@ -40,7 +47,9 @@ describe("Button", () => {
   });
 
   it("giữ className do call site truyền vào", () => {
-    const html = renderToStaticMarkup(<Button className="global-header-auth-button">Nút</Button>);
+    const html = renderToStaticMarkup(
+      <Button className="global-header-auth-button">Nút</Button>,
+    );
 
     expect(html).toContain("global-header-auth-button");
   });
