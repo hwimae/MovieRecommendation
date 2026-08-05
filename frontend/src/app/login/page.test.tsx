@@ -17,9 +17,9 @@ vi.mock("@/components/ui/form-field", () => ({
   FormField: ({ label }: { label: string }) => React.createElement("div", null, label),
 }));
 
-vi.mock("@/components/ui/form-surface", () => ({
-  FormSurface: ({ children, className }: { children: React.ReactNode; className?: string }) =>
-    React.createElement("section", { className: ["form-surface", className].filter(Boolean).join(" ") }, children),
+vi.mock("@/components/ui", () => ({
+  CardSurface: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("div", { "data-testid": "card-surface" }, children),
 }));
 
 vi.mock("@/components/ui/page-shell", () => ({

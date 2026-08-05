@@ -1,6 +1,8 @@
 import { heroui } from "@heroui/react";
 import type { Config } from "tailwindcss";
 
+import { colors, radius, shadows } from "./src/components/ui/style";
+
 const config: Config = {
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,22 +11,19 @@ const config: Config = {
     "./node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}",
     "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: "class",
   theme: {
     extend: {
-      colors: {
-        ocean: {
-          50: "#effcff",
-          100: "#dff7ff",
-          200: "#b8eeff",
-          300: "#78ddff",
-          400: "#32c8f2",
-          500: "#0ea5e9",
-          600: "#0284c7",
-          700: "#0369a1",
-          800: "#075985",
-          900: "#0c4a6e",
-        },
+      colors: { ...colors },
+      borderRadius: {
+        card: radius.card,
+        field: radius.field,
+        pill: radius.pill,
+        small: radius.small,
+      },
+      boxShadow: {
+        soft: shadows.soft,
+        card: shadows.card,
+        primary: shadows.primary,
       },
     },
   },
@@ -32,9 +31,9 @@ const config: Config = {
     heroui({
       layout: {
         radius: {
-          small: "0.5rem",
-          medium: "0.875rem",
-          large: "1.25rem",
+          small: radius.small,
+          medium: radius.field,
+          large: radius.card,
         },
         borderWidth: {
           small: "1px",
@@ -45,19 +44,34 @@ const config: Config = {
       themes: {
         light: {
           colors: {
+            background: colors.background,
+            foreground: colors.text,
+            divider: colors.border,
+            focus: colors.primary,
             primary: {
-              50: "#effcff",
-              100: "#dff7ff",
-              200: "#b8eeff",
-              300: "#78ddff",
-              400: "#32c8f2",
-              500: "#0ea5e9",
-              600: "#0284c7",
-              700: "#0369a1",
-              800: "#075985",
-              900: "#0c4a6e",
-              DEFAULT: "#0284c7",
+              DEFAULT: colors.primary,
               foreground: "#ffffff",
+              50: colors.primarySoft,
+              600: colors.primary,
+              700: colors.primaryStrong,
+            },
+            success: {
+              DEFAULT: colors.success,
+              foreground: "#ffffff",
+              50: colors.successSoft,
+              700: colors.onSuccessSoft,
+            },
+            warning: {
+              DEFAULT: colors.warning,
+              foreground: "#ffffff",
+              50: colors.warningSoft,
+              700: colors.onWarningSoft,
+            },
+            danger: {
+              DEFAULT: colors.danger,
+              foreground: "#ffffff",
+              50: colors.dangerSoft,
+              700: colors.onDangerSoft,
             },
           },
         },

@@ -4,7 +4,7 @@ import { Button, Radio, RadioGroup } from "@heroui/react";
 import React, { FormEvent, useId, useRef, useState } from "react";
 
 import { FormField } from "@/components/ui/form-field";
-import { FormSurface } from "@/components/ui/form-surface";
+import { CardSurface } from "./ui";
 import { StatusMessage } from "@/components/ui/status-message";
 import { apiPost } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
@@ -55,7 +55,7 @@ export function ReviewForm({ storyId }: ReviewFormProps) {
 
   return (
     <section aria-labelledby="review-title" className="section-stack review-form-surface">
-      <FormSurface className="workspace-card">
+      <CardSurface className="workspace-card">
         <div className="form-surface-heading">
           <p className="eyebrow">Đánh giá</p>
           <h2 id="review-title">Viết review truyện</h2>
@@ -109,7 +109,7 @@ export function ReviewForm({ storyId }: ReviewFormProps) {
             {!error && message ? <StatusMessage tone="success">{message}</StatusMessage> : null}
           </div>
         </form>
-      </FormSurface>
+      </CardSurface>
     </section>
   );
 }

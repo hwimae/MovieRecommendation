@@ -1,12 +1,14 @@
 "use client";
 
-import { Button, Link as HeroLink } from "@heroui/react";
 import { CircleUserRound } from "lucide-react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 
 import { useAuth } from "@/components/auth/auth-context";
+
+import { Button } from "./button";
+import { TextLink } from "./text-link";
 
 const MODULE_LINKS = [
   { href: "/", label: "Home" },
@@ -46,9 +48,9 @@ export function GlobalHeader() {
     <header className="global-header">
       <div className="global-header-shell">
         <div className="global-header-topbar">
-          <HeroLink as={NextLink} href="/" color="foreground" className="global-header-brand">
+          <TextLink as={NextLink} href="/" tone="muted" className="global-header-brand">
             <span className="global-header-brand-mark">Hwimae</span>
-          </HeroLink>
+          </TextLink>
 
           <div className="global-header-actions global-header-auth-actions">
             {!shouldHideAuthActions &&
@@ -59,9 +61,7 @@ export function GlobalHeader() {
                     <span className="global-header-account-name">{user.name}</span>
                   </div>
                   <Button
-                    color="primary"
-                    variant="flat"
-                    radius="full"
+                    variant="ghost"
                     className="global-header-auth-button global-header-register-button"
                     onPress={logout}
                   >
@@ -73,9 +73,7 @@ export function GlobalHeader() {
                   <Button
                     as={NextLink}
                     href="/login"
-                    color="primary"
-                    variant="light"
-                    radius="full"
+                    variant="ghost"
                     className="global-header-auth-button global-header-login-button"
                   >
                     Login
@@ -83,8 +81,7 @@ export function GlobalHeader() {
                   <Button
                     as={NextLink}
                     href="/register"
-                    color="primary"
-                    radius="full"
+                    variant="primary"
                     className="global-header-auth-button global-header-register-button"
                   >
                     Register
@@ -99,16 +96,16 @@ export function GlobalHeader() {
             const isActive = isModuleActive(pathname, item.href);
 
             return (
-              <HeroLink
+              <TextLink
                 key={item.href}
                 as={NextLink}
                 href={item.href}
-                color="foreground"
+                tone="muted"
                 aria-current={isActive ? "page" : undefined}
                 className="global-header-nav-link"
               >
                 {item.label}
-              </HeroLink>
+              </TextLink>
             );
           })}
         </nav>

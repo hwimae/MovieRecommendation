@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import React, { FormEvent, useRef, useState } from "react";
 
 import { FormField } from "@/components/ui/form-field";
-import { FormSurface } from "@/components/ui/form-surface";
+import { CardSurface } from "@/components/ui";
 import { PageShell } from "@/components/ui/page-shell";
 import { StatusMessage } from "@/components/ui/status-message";
 import { apiPost } from "@/lib/api";
@@ -53,7 +53,7 @@ export default function RegisterPage() {
       variant="workspace"
     >
       <div className="auth-layout auth-layout-compact">
-        <FormSurface className="auth-card">
+        <CardSurface className="auth-card">
           <div className="form-surface-heading">
             <h2>Tạo tài khoản mới</h2>
           </div>
@@ -103,7 +103,7 @@ export default function RegisterPage() {
               {isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
             </Button>
           </form>
-        </FormSurface>
+        </CardSurface>
       </div>
     </PageShell>
   );

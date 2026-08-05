@@ -6,11 +6,6 @@ vi.mock("@/components/ui/form-field", () => ({
   FormField: ({ label }: { label: string }) => React.createElement("div", null, label),
 }));
 
-vi.mock("@/components/ui/form-surface", () => ({
-  FormSurface: ({ children, className }: { children: React.ReactNode; className?: string }) =>
-    React.createElement("section", { className: ["form-surface", className].filter(Boolean).join(" ") }, children),
-}));
-
 vi.mock("@/components/ui/status-message", () => ({
   StatusMessage: ({ children }: { children: React.ReactNode }) => React.createElement("div", null, children),
 }));
@@ -28,7 +23,7 @@ import { ReviewForm } from "./review-form";
 describe("ReviewForm", () => {
   it("renders the review controls inside the shared form surface", () => {
     const html = renderToStaticMarkup(<ReviewForm storyId="story-1" />);
-    expect(html).toContain("form-surface");
+    expect(html).toContain('data-testid="card-surface"');
     expect(html).toContain("Viết review truyện");
     expect(html).toContain("Gửi review");
   });

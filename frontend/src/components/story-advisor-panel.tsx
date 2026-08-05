@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import React from "react";
 
-import { FormSurface } from "./ui/form-surface";
+import { CardSurface } from "./ui";
 
 const StoryAdvisorForm = dynamic(
   () => import("./story-advisor-form").then((module) => module.StoryAdvisorForm),
@@ -16,7 +16,7 @@ const StoryAdvisorForm = dynamic(
 function StoryAdvisorLoadingState() {
   return (
     <section className="section-stack story-advisor-layout">
-      <FormSurface className="workspace-card story-advisor-card">
+      <CardSurface className="workspace-card story-advisor-card">
         <div className="form-surface-heading">
           <h2>Tìm truyện cùng AI</h2>
           <p className="result-summary">
@@ -25,7 +25,7 @@ function StoryAdvisorLoadingState() {
           </p>
         </div>
         <p className="result-summary">Đang tải công cụ AI tư vấn…</p>
-      </FormSurface>
+      </CardSurface>
     </section>
   );
 }

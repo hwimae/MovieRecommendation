@@ -34,3 +34,6 @@ backend/storage/stories/*
 
 # Local nested repo / sandbox
 moniagent/
+
+# Superpowers brainstorming session artifacts
+.superpowers/

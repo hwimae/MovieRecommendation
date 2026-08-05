@@ -6,7 +6,7 @@ import React, { FormEvent, Suspense, useRef, useState } from "react";
 
 import { AUTH_REQUIRED_REDIRECT_REASON } from "@/components/auth/auth-routing";
 import { FormField } from "@/components/ui/form-field";
-import { FormSurface } from "@/components/ui/form-surface";
+import { CardSurface } from "@/components/ui";
 import { PageShell } from "@/components/ui/page-shell";
 import { StatusMessage } from "@/components/ui/status-message";
 import { ApiError, apiPost } from "@/lib/api";
@@ -72,7 +72,7 @@ function LoginForm() {
       variant="workspace"
     >
       <div className="auth-layout auth-layout-compact">
-        <FormSurface className="auth-card">
+        <CardSurface className="auth-card">
           <div className="form-surface-heading">
             <h2>Chào mừng quay lại</h2>
           </div>
@@ -118,7 +118,7 @@ function LoginForm() {
               </Button>
             </form>
           </div>
-        </FormSurface>
+        </CardSurface>
       </div>
     </PageShell>
   );

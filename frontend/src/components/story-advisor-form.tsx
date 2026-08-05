@@ -10,7 +10,7 @@ import type { StoryAdvisorResponse } from "../types/recommendation";
 import { AdvisorQuickPrompts } from "./stories/advisor-quick-prompts";
 import { AdvisorSummaryCard } from "./stories/advisor-summary-card";
 import { RecommendationStoryCard } from "./stories/recommendation-story-card";
-import { FormSurface } from "./ui/form-surface";
+import { CardSurface } from "./ui";
 import { StatusMessage } from "./ui/status-message";
 
 const EXAMPLE_QUERY =
@@ -78,7 +78,7 @@ export function StoryAdvisorForm() {
 
   return (
     <section className="section-stack story-advisor-layout">
-      <FormSurface className="workspace-card story-advisor-card">
+      <CardSurface className="workspace-card story-advisor-card">
         <div className="form-surface-heading">
           <h2>Tìm truyện cùng AI</h2>
           <p className="result-summary">
@@ -124,7 +124,7 @@ export function StoryAdvisorForm() {
             </Button>
           </div>
         </form>
-      </FormSurface>
+      </CardSurface>
 
       <AdvisorQuickPrompts
         prompts={ADVISOR_QUICK_PROMPTS}

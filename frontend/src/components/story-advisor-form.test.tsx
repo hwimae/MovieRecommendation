@@ -54,7 +54,7 @@ describe("StoryAdvisorForm", () => {
       "Điền văn",
     ]);
     expect(html).toContain("Tìm truyện cùng AI");
-    expect(html).toContain("form-surface");
+    expect(html).toContain('data-testid="card-surface"');
     expect(html).toContain("story-advisor-card");
     expect(html).not.toContain("story-advisor-hero");
     expect(html).toContain("Tạo vector và tìm truyện");
