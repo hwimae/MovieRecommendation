@@ -38,7 +38,7 @@ describe("GlobalHeader", () => {
 
     expect(html).toContain("Hwimae");
     expect(html).toContain("global-header-shell");
-    expect(html).toContain("global-header-topbar");
+    expect(html).not.toContain("global-header-topbar");
     expect(html).toContain("global-header-module-rail");
     expect(html).toContain("global-header-nav-link");
     expect(html).toContain("global-header-auth-button");

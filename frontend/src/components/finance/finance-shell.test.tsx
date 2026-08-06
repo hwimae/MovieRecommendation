@@ -31,6 +31,10 @@ describe("FinanceShell", () => {
     expect(html).toContain("Tài chính cá nhân");
     expect(html).toContain("Điều hướng tài chính");
     expect(html).not.toContain("Khu tài chính");
+    expect(html).not.toContain("Finance workspace");
+    expect(html).not.toContain("Theo dõi chi tiêu, ngân sách và các danh mục tài chính của bạn.");
+    expect(html).not.toContain("page-header");
+    expect(html).toContain('class="sr-only"');
     expect(html).toContain("Nội dung dashboard");
     expect(html).not.toContain("finance-shell-layout");
     expect(html).toContain("finance-shell-frame");

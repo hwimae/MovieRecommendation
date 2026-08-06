@@ -112,7 +112,8 @@ a:focus-visible {
 
 .global-header-shell {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "brand nav actions";
   align-items: center;
   gap: 1.25rem;
   width: min(100%, 80rem);
@@ -126,6 +127,7 @@ a:focus-visible {
 }
 
 .global-header-brand {
+  grid-area: brand;
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
@@ -142,6 +144,7 @@ a:focus-visible {
 }
 
 .global-header-menu {
+  grid-area: nav;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -150,6 +153,7 @@ a:focus-visible {
 }
 
 .global-header-actions {
+  grid-area: actions;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -2389,8 +2393,6 @@ tbody tr:last-child td {
   }
 
   .global-header-shell {
-    grid-template-columns: 1fr;
-    justify-items: start;
     padding: 1rem;
   }
 
@@ -2534,7 +2536,8 @@ a:hover {
 
 .global-header-shell {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "brand nav actions";
   align-items: center;
   gap: 1rem;
   width: min(100%, 80rem);
@@ -3055,11 +3058,6 @@ a:hover {
   .story-workspace-nav-mobile {
     display: flex;
   }
-
-  .global-header-shell {
-    grid-template-columns: 1fr;
-    justify-items: start;
-  }
 }
 
 @media (max-width: 640px) {
@@ -3133,14 +3131,22 @@ a:hover {
 }
 
 .global-header-shell {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "brand nav actions";
+  row-gap: 0.5rem;
 }
 
-.global-header-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+@media (max-width: 900px) {
+  .global-header-shell {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "nav nav";
+  }
+
+  .global-header-module-rail {
+    justify-content: flex-start;
+  }
 }
 
 .global-header-auth-actions {
@@ -3198,10 +3204,6 @@ a:hover {
 }
 
 @media (min-width: 1024px) {
-  .global-header-shell {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .global-header-module-rail {
     overflow: visible;
     padding-bottom: 0;
@@ -3220,10 +3222,6 @@ a:hover {
 }
 
 @media (max-width: 639px) {
-  .global-header-topbar {
-    align-items: flex-start;
-  }
-
   .global-header-auth-actions {
     flex-wrap: wrap;
     justify-content: flex-end;

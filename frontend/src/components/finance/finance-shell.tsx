@@ -3,36 +3,17 @@
 import { usePathname } from "next/navigation";
 import React, { type ReactNode } from "react";
 
-import { PageShell } from "../ui/page-shell";
 import { FinanceNav } from "./finance-nav";
 
-const PAGE_COPY: Record<string, { title: string; description: string }> = {
-  "/finance/dashboard": {
-    title: "Tài chính cá nhân",
-    description: "Theo dõi chi tiêu, ngân sách và các danh mục tài chính của bạn.",
-  },
-  "/finance/chat": {
-    title: "AI tài chính",
-    description: "Trao đổi với trợ lý về chi tiêu, hóa đơn và kế hoạch ngân sách cá nhân.",
-  },
-  "/finance/expenses": {
-    title: "Chi tiêu",
-    description: "Xem lại các khoản chi đã ghi nhận và theo dõi giao dịch gần đây.",
-  },
-  "/finance/budgets": {
-    title: "Ngân sách",
-    description: "Thiết lập hạn mức theo danh mục để kiểm soát thói quen chi tiêu.",
-  },
-  "/finance/groups": {
-    title: "Nhóm tài chính",
-    description: "Chia sẻ dashboard tài chính cá nhân với các thành viên trong nhóm.",
-  },
+const PAGE_TITLES: Record<string, string> = {
+  "/finance/dashboard": "Tài chính cá nhân",
+  "/finance/chat": "AI tài chính",
+  "/finance/expenses": "Chi tiêu",
+  "/finance/budgets": "Ngân sách",
+  "/finance/groups": "Nhóm tài chính",
 };
 
-const DEFAULT_COPY = {
-  title: "Quản lý tài chính",
-  description: "Theo dõi chi tiêu, quản lý ngân sách và nhận hỗ trợ từ AI.",
-};
+const DEFAULT_TITLE = "Quản lý tài chính";
 
 type FinanceShellProps = {
   children: ReactNode;
@@ -40,16 +21,17 @@ type FinanceShellProps = {
 
 export function FinanceShell({ children }: FinanceShellProps) {
   const pathname = usePathname();
-  const copy = PAGE_COPY[pathname] ?? DEFAULT_COPY;
+  const title = PAGE_TITLES[pathname] ?? DEFAULT_TITLE;
 
   return (
-    <PageShell title={copy.title} description={copy.description} eyebrow="Finance workspace" variant="workspace">
+    <main className="page-shell page-shell-workspace">
+      <h1 className="sr-only">{title}</h1>
       <div className="finance-shell-frame">
         <div className="finance-shell-nav-row">
           <FinanceNav />
         </div>
         <div className="finance-shell-content">{children}</div>
       </div>
-    </PageShell>
+    </main>
   );
 }

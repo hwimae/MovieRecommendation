@@ -1,14 +1,14 @@
-import { PageShell } from "@/components/ui/page-shell";
 import { PageState } from "@/components/ui/page-state";
 
 export default function FinanceLoading() {
   return (
-    <PageShell title="Đang tải tài chính" description="Đang chuẩn bị dữ liệu hiển thị." eyebrow="Loading" variant="workspace">
+    <main className="page-shell page-shell-workspace">
+      <h1 className="sr-only">Đang tải tài chính</h1>
       <PageState
         tone="loading"
         title="Đang tải workspace tài chính"
         description="Đang chuẩn bị dashboard, giao dịch và các nhóm chia sẻ của bạn."
       />
-    </PageShell>
+    </main>
   );
 }
